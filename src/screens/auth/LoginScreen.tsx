@@ -359,6 +359,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.border,
+    minHeight: 52,
   },
   inputWrapperFocused: {
     borderColor: COLORS.primary,
@@ -370,13 +371,16 @@ const styles = StyleSheet.create({
   },
   inputIcon: {
     paddingLeft: 14,
+    paddingRight: 2,
   },
   input: {
     flex: 1,
     color: COLORS.text,
     fontSize: FONTS.sizes.md,
     paddingHorizontal: 12,
-    paddingVertical: 14,
+    paddingVertical: 0,
+    height: 52,
+    textAlignVertical: 'center',
   },
   loginButton: {
     borderRadius: RADIUS.md,
