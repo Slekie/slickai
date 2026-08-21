@@ -118,6 +118,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
                   editable={!isLoading}
                   onFocus={() => setFocused((f) => ({ ...f, email: true }))}
                   onBlur={() => setFocused((f) => ({ ...f, email: false }))}
+                  accessibilityLabel="Email address"
                 />
               </View>
             </View>
@@ -138,6 +139,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
                   editable={!isLoading}
                   onFocus={() => setFocused((f) => ({ ...f, password: true }))}
                   onBlur={() => setFocused((f) => ({ ...f, password: false }))}
+                  accessibilityLabel="Password"
                 />
               </View>
             </View>
@@ -158,6 +160,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
                   editable={!isLoading}
                   onFocus={() => setFocused((f) => ({ ...f, confirm: true }))}
                   onBlur={() => setFocused((f) => ({ ...f, confirm: false }))}
+                  accessibilityLabel="Confirm password"
                 />
               </View>
             </View>
@@ -170,6 +173,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
                 onPressIn={() => { btnScale.value = withSpring(0.96); }}
                 onPressOut={() => { btnScale.value = withSpring(1); }}
                 disabled={isLoading}
+                accessibilityRole="button"
+                accessibilityLabel="Create account"
+                accessibilityHint="Registers a new Slick AI account"
+                accessibilityState={{ disabled: isLoading }}
               >
                 <LinearGradient
                   colors={COLORS.gradientBuy}
@@ -190,6 +197,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
               style={styles.loginLink}
               onPress={() => navigation.navigate('Login')}
               disabled={isLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Go to Sign In"
+              accessibilityHint="Opens the login screen"
             >
               <Text style={styles.loginLinkText}>
                 Already have an account?{' '}

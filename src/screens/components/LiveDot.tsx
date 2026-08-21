@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { COLORS } from '../theme';
+import { COLORS } from '../../theme/index';
 
 interface LiveDotProps {
   color?: string;

@@ -1,36 +1,18 @@
-import React from "react";
-import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-
-import WelcomeScreen from "./screens/WelcomeScreen";
-import GetStartedScreen from "./screens/GetStartedScreen";
-
-export type RootStackParamList = {
-  Welcome: undefined;
-  GetStarted: undefined;
-};
-
-const Stack = createNativeStackNavigator<RootStackParamList>();
+import React from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { StyleSheet } from 'react-native';
+import { RootNavigator } from './src/navigation/RootNavigator';
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName="Welcome"
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        <Stack.Screen
-          name="Welcome"
-          component={WelcomeScreen}
-        />
-
-        <Stack.Screen
-          name="GetStarted"
-          component={GetStartedScreen}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <GestureHandlerRootView style={styles.root}>
+      <RootNavigator />
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+});

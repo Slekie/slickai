@@ -22,6 +22,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { authService } from '../../services/authService';
 import { COLORS, FONTS, RADIUS, SPACING } from '../../theme';
+import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
+import { AppleSignInButton } from '../../components/auth/AppleSignInButton';
 
 type AuthStackParamList = {
   Login: undefined;
@@ -32,7 +34,16 @@ interface LoginScreenProps {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 }
 
+interface FocusState {
+  email: boolean;
+  password: boolean;
+}
+
 function formatLockoutTime(ms: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
@@ -172,6 +183,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                   editable={!isLoading}
                   onFocus={() => setFocused((f) => ({ ...f, email: true }))}
                   onBlur={() => setFocused((f) => ({ ...f, email: false }))}
+                  accessibilityLabel="Email address"
                 />
               </View>
             </View>
@@ -192,6 +204,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                   editable={!isLoading}
                   onFocus={() => setFocused((f) => ({ ...f, password: true }))}
                   onBlur={() => setFocused((f) => ({ ...f, password: false }))}
+                  accessibilityLabel="Password"
                 />
               </View>
             </View>
@@ -204,6 +217,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 onPressIn={() => { btnScale.value = withSpring(0.96); }}
                 onPressOut={() => { btnScale.value = withSpring(1); }}
                 disabled={isLoading}
+                accessibilityRole="button"
+                accessibilityLabel="Sign in"
+                accessibilityHint="Signs you into your Slick AI account"
+                accessibilityState={{ disabled: isLoading }}
               >
                 <LinearGradient
                   colors={COLORS.gradientBuy}
@@ -226,17 +243,43 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 style={styles.biometricButton}
                 onPress={handleBiometric}
                 disabled={isLoading}
+                accessibilityRole="button"
+                accessibilityLabel="Sign in with biometrics"
+                accessibilityHint="Authenticates using your device biometrics"
+                accessibilityState={{ disabled: isLoading }}
               >
                 <Ionicons name="finger-print" size={20} color={COLORS.text} />
                 <Text style={styles.biometricButtonText}>  Sign in with Biometrics</Text>
               </Pressable>
             )}
 
+            {/* Google Sign-In */}
+            <GoogleSignInButton
+              onSuccess={() => {
+                // The authStore.login() call inside GoogleSignInButton updates
+                // isAuthenticated, which causes RootNavigator to switch to
+                // MainTabNavigator automatically — no explicit navigation needed.
+              }}
+              onError={(err) => setError(err.message)}
+            />
+
+            {/* Apple Sign-In (iOS only — returns null on Android / Expo Go) */}
+            <AppleSignInButton
+              onSuccess={() => {
+                // Same as Google: authStore.login() triggers RootNavigator to
+                // switch to MainTabNavigator automatically.
+              }}
+              onError={(err) => setError(err.message)}
+            />
+
             {/* Register link */}
             <Pressable
               style={styles.registerLink}
               onPress={() => navigation.navigate('Register')}
               disabled={isLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Go to Register"
+              accessibilityHint="Opens the account registration screen"
             >
               <Text style={styles.registerLinkText}>
                 Don't have an account?{' '}

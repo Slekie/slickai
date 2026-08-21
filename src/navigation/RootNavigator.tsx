@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -6,7 +6,11 @@ import Animated, {
   withTiming,
   withDelay,
 } from 'react-native-reanimated';
-import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  DarkTheme,
+  createNavigationContainerRef,
+} from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthNavigator } from './AuthNavigator';
@@ -19,7 +23,16 @@ import { tradeService } from '../services/tradeService';
 import { websocketService } from '../services/websocketService';
 import { notificationService } from '../services/notificationService';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { useAppStateWebSocket } from '../hooks/useAppStateWebSocket';
+import { subscriptionService } from '../services/subscriptionService';
+import { useSubscriptionStore } from '../store/subscriptionStore';
+import { PaywallScreen } from '../screens/paywall/PaywallScreen';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import { NetworkBanner } from '../components/NetworkBanner';
 import { COLORS } from '../theme';
+
+// Navigation ref for deep-linking from notification taps
+const navigationRef = createNavigationContainerRef<Record<string, unknown>>();
 
 const navigationTheme = {
   ...DarkTheme,
@@ -77,9 +90,38 @@ const SplashScreen: React.FC = () => {
 // ── Inner app content ────────────────────────────────────────────────────────
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
+  const { isSubscribed, setSubscription } = useSubscriptionStore();
+  const [checkingSubscription, setCheckingSubscription] = useState(false);
+
   useWebSocket();
-  return isAuthenticated ? <MainTabNavigator /> : <AuthNavigator />;
+  useAppStateWebSocket();
+
+  // After authentication, configure RevenueCat and check entitlement
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    setCheckingSubscription(true);
+    subscriptionService.configure(user.userId);
+
+    void subscriptionService.getCustomerInfo().then((info) => {
+      setSubscription(info);
+    }).catch(() => {
+      // Treat error as no subscription — PaywallScreen handles the retry
+    }).finally(() => {
+      setCheckingSubscription(false);
+    });
+  }, [isAuthenticated, user?.userId]);
+
+  if (!isAuthenticated) return <AuthNavigator />;
+  if (checkingSubscription) return null; // brief blank while checking
+
+  return isSubscribed ? (
+    <ErrorBoundary>
+      <MainTabNavigator />
+      <NetworkBanner />
+    </ErrorBoundary>
+  ) : <PaywallScreen />;
 };
 
 // ── Root navigator ────────────────────────────────────────────────────────────
@@ -88,11 +130,15 @@ export const RootNavigator: React.FC = () => {
   const { isLoading, isAuthenticated, token, loadStoredAuth } = useAuthStore();
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
   const [showSplash, setShowSplash] = useState(true);
+  const notifCleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const init = async () => {
-      await loadStoredAuth();
-      await notificationService.initialize();
+      // Run auth restore and notification setup in parallel (Req 1.7)
+      await Promise.all([
+        loadStoredAuth(),
+        notificationService.initialize(),
+      ]);
       await notificationService.requestPermissions();
       const done = await hasCompletedOnboarding();
       setOnboardingDone(done);
@@ -100,6 +146,26 @@ export const RootNavigator: React.FC = () => {
       setTimeout(() => setShowSplash(false), 1800);
     };
     void init();
+
+    // Register notification tap deep-link listener
+    const cleanup = notificationService.addNotificationResponseListener((response) => {
+      const data = response.notification.request.content.data as Record<string, unknown>;
+      if (!navigationRef.isReady()) return;
+
+      const type = data?.type as string | undefined;
+      if (type === 'signal') {
+        // Navigate to Signals tab
+        navigationRef.navigate('Signals' as never);
+      } else if (type === 'trade_executed' || type === 'trade_closed') {
+        // Navigate to Trades tab
+        navigationRef.navigate('Trades' as never);
+      }
+    });
+    notifCleanupRef.current = cleanup;
+
+    return () => {
+      notifCleanupRef.current?.();
+    };
   }, []);
 
   useEffect(() => {
@@ -125,7 +191,7 @@ export const RootNavigator: React.FC = () => {
   }
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer theme={navigationTheme} ref={navigationRef}>
       <AppContent />
     </NavigationContainer>
   );

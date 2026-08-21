@@ -39,6 +39,9 @@ const SettingRow: React.FC<SettingRowProps> = ({
     style={styles.settingRow}
     onPress={onPress}
     disabled={!onPress && !rightElement}
+    accessibilityRole={onPress ? 'button' : 'none'}
+    accessibilityLabel={label}
+    accessibilityHint={onPress && !rightElement ? `Opens ${label}` : undefined}
   >
     <View style={[styles.settingIcon, destructive && styles.settingIconDestructive]}>
       <Ionicons
@@ -89,10 +92,17 @@ const ModeConfirmModal: React.FC<ModeConfirmModalProps> = ({
           </Text>
         </View>
         <View style={styles.modalActions}>
-          <Pressable style={styles.cancelButton} onPress={onCancel}>
+          <Pressable style={styles.cancelButton} onPress={onCancel}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel automated trading switch"
+          >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </Pressable>
-          <Pressable style={styles.confirmButton} onPress={onConfirm}>
+          <Pressable style={styles.confirmButton} onPress={onConfirm}
+            accessibilityRole="button"
+            accessibilityLabel="Confirm enable automated trading"
+            accessibilityHint="Confirms you understand the risks and enables automated trading"
+          >
             <Text style={styles.confirmButtonText}>I Understand</Text>
           </Pressable>
         </View>
@@ -182,6 +192,8 @@ export const SettingsScreen: React.FC = () => {
               onValueChange={setNotificationsEnabled}
               trackColor={{ false: COLORS.border, true: COLORS.primary }}
               thumbColor={notificationsEnabled ? '#FFFFFF' : '#AAAAAA'}
+              accessibilityLabel="Push notifications"
+              accessibilityState={{ checked: notificationsEnabled }}
             />
           }
         />
@@ -195,6 +207,8 @@ export const SettingsScreen: React.FC = () => {
               onValueChange={setHapticEnabled}
               trackColor={{ false: COLORS.border, true: COLORS.primary }}
               thumbColor={hapticEnabled ? '#FFFFFF' : '#AAAAAA'}
+              accessibilityLabel="Haptic feedback"
+              accessibilityState={{ checked: hapticEnabled }}
             />
           }
         />
@@ -252,6 +266,8 @@ export const SettingsScreen: React.FC = () => {
                 onValueChange={() => handleToggleMode(account)}
                 trackColor={{ false: COLORS.border, true: COLORS.primary }}
                 thumbColor={isAutomated ? '#FFFFFF' : '#AAAAAA'}
+                accessibilityLabel={`Automated trading for ${account.broker.toUpperCase()}`}
+                accessibilityState={{ checked: isAutomated }}
               />
             </View>
           </View>
@@ -269,7 +285,11 @@ export const SettingsScreen: React.FC = () => {
       </View>
 
       {/* Sign out */}
-      <Pressable style={styles.logoutButton} onPress={handleLogout}>
+      <Pressable style={styles.logoutButton} onPress={handleLogout}
+        accessibilityRole="button"
+        accessibilityLabel="Sign out"
+        accessibilityHint="Signs you out of your Slick AI account"
+      >
         <Ionicons name="log-out-outline" size={18} color={COLORS.error} />
         <Text style={styles.logoutButtonText}> Sign Out</Text>
       </Pressable>

@@ -5,6 +5,7 @@ import { accountService } from '../services/accountService';
 import { signalService } from '../services/signalService';
 import { tradeService } from '../services/tradeService';
 import { websocketService } from '../services/websocketService';
+import { notificationService } from '../services/notificationService';
 
 /**
  * Hook that provides auth actions and state from the auth store.
@@ -21,10 +22,12 @@ export function useAuth() {
 
       store.setLoading(true);
       try {
-        const { user, token } = await authService.login(email, password);
-        await store.login(user, token);
+        const { user, token, refreshToken } = await authService.login(email, password);
+        await store.login(user, token, refreshToken);
         _setTokenOnServices(token);
         store.resetFailedAttempts();
+        // Non-blocking push token registration
+        void notificationService.registerPushToken(token);
       } catch (err) {
         store.incrementFailedAttempts();
         throw err;
@@ -39,9 +42,11 @@ export function useAuth() {
     async (email: string, password: string): Promise<void> => {
       store.setLoading(true);
       try {
-        const { user, token } = await authService.register(email, password);
-        await store.register(user, token);
+        const { user, token, refreshToken } = await authService.register(email, password);
+        await store.register(user, token, refreshToken);
         _setTokenOnServices(token);
+        // Non-blocking push token registration
+        void notificationService.registerPushToken(token);
       } finally {
         store.setLoading(false);
       }

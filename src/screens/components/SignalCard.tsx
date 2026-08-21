@@ -9,8 +9,8 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, RADIUS, SPACING } from '../theme';
-import type { Signal } from '../store/signalStore';
+import { COLORS, RADIUS, SPACING } from '../../theme/index';
+import type { Signal } from '../../store/signalStore';
 
 const SIGNAL_EXPIRY_MINUTES = 15;
 

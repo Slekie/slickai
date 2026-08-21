@@ -1,10 +1,10 @@
 import { useCallback } from 'react';
-import { useAuthStore } from '../store/authStore';
-import { authService } from '../services/authService';
-import { accountService } from '../services/accountService';
-import { signalService } from '../services/signalService';
-import { tradeService } from '../services/tradeService';
-import { websocketService } from '../services/websocketService';
+import { useAuthStore } from '../../store/authStore';
+import { authService } from '../../services/authService';
+import { accountService } from '../../services/accountService';
+import { signalService } from '../../services/signalService';
+import { tradeService } from '../../services/tradeService';
+import { websocketService } from '../../services/websocketService';
 
 /**
  * Hook that provides auth actions and state from the auth store.

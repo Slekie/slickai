@@ -117,6 +117,9 @@ export const SignalsScreen: React.FC = () => {
             key={f}
             style={[styles.filterChip, activeFilter === f && styles.filterChipActive]}
             onPress={() => setActiveFilter(f)}
+            accessibilityRole="tab"
+            accessibilityLabel={`Filter by ${f}`}
+            accessibilityState={{ selected: activeFilter === f }}
           >
             <Text style={[styles.filterChipText, activeFilter === f && styles.filterChipTextActive]}>
               {f}

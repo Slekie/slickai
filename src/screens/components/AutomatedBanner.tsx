@@ -8,7 +8,8 @@ import Animated, {
   withTiming,
   withDelay,
 } from 'react-native-reanimated';
-import { COLORS, RADIUS, SPACING } from '../theme';
+
+import { COLORS, RADIUS, SPACING } from '../../theme/index';
 
 interface AutomatedBannerProps {
   message?: string;

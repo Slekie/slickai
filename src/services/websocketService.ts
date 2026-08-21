@@ -74,6 +74,29 @@ class WebSocketService {
     this._notifyConnectionListeners(false);
   }
 
+  /**
+   * Pause reconnection attempts (e.g. when app goes to background).
+   * Preserves the socket instance — does NOT disconnect.
+   */
+  pauseReconnect(): void {
+    this.shouldBeConnected = false;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+
+  /**
+   * Resume reconnection attempts (e.g. when app returns to foreground).
+   * Immediately attempts to connect if not already connected.
+   */
+  resumeReconnect(): void {
+    this.shouldBeConnected = true;
+    if (!this.isConnecting && !(this.socket?.connected)) {
+      this._connect();
+    }
+  }
+
   subscribe(channel: WsChannel): void {
     if (!this.socket) return;
     this.socket.emit('subscribe', { channel });
@@ -151,6 +174,7 @@ class WebSocketService {
   }
 
   private _scheduleReconnect(): void {
+    if (!this.shouldBeConnected) return; // paused — don't schedule
     if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
       console.warn('[WS] Max reconnect attempts reached.');
       return;

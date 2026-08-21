@@ -205,6 +205,9 @@ export const TradeHistoryScreen: React.FC = () => {
             key={f}
             style={[styles.filterChip, dirFilter === f && styles.filterChipActive]}
             onPress={() => setDirFilter(f)}
+            accessibilityRole="tab"
+            accessibilityLabel={`Filter by ${f}`}
+            accessibilityState={{ selected: dirFilter === f }}
           >
             <Text style={[styles.filterChipText, dirFilter === f && styles.filterChipTextActive]}>
               {f}

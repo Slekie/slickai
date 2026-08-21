@@ -156,6 +156,9 @@ export const DashboardScreen: React.FC = () => {
             key={p}
             style={[styles.tab, selectedPeriod === p && styles.tabActive]}
             onPress={() => setSelectedPeriod(p)}
+            accessibilityRole="tab"
+            accessibilityLabel={`${p} period`}
+            accessibilityState={{ selected: selectedPeriod === p }}
           >
             <Text style={[styles.tabText, selectedPeriod === p && styles.tabTextActive]}>
               {p}

@@ -1,13 +1,9 @@
-import axios from 'axios';
+import { createAuthenticatedClient } from './apiClient';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { API_BASE_URL, API_TIMEOUT_MS, ENDPOINTS } from '../config/api';
+import { API_BASE_URL, ENDPOINTS } from '../config/api';
 import type { AuthUser } from '../store/authStore';
 
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: API_TIMEOUT_MS,
-  headers: { 'Content-Type': 'application/json' },
-});
+const apiClient = createAuthenticatedClient(API_BASE_URL);
 
 export interface LoginResponse {
   user: AuthUser;
@@ -86,6 +82,36 @@ export const authService = {
     const response = await apiClient.post<LoginResponse>(
       ENDPOINTS.auth.biometric,
       { userId, signature }
+    );
+    return response.data;
+  },
+
+  /**
+   * Authenticate with a Google ID token obtained from the OAuth flow.
+   * The caller (component) handles the OAuth prompt; this method only
+   * exchanges the resulting token with the backend.
+   */
+  loginWithGoogle: async (idToken: string): Promise<LoginResponse> => {
+    const response = await apiClient.post<LoginResponse>(
+      ENDPOINTS.auth.google,
+      { idToken }
+    );
+    return response.data;
+  },
+
+  /**
+   * Authenticate with an Apple identity token obtained from Sign in with Apple.
+   * The caller (component) handles the native Apple prompt; this method only
+   * exchanges the resulting credential with the backend.
+   * `email` may be null on subsequent sign-ins (Apple only provides it once).
+   */
+  loginWithApple: async (
+    identityToken: string,
+    email: string | null
+  ): Promise<LoginResponse> => {
+    const response = await apiClient.post<LoginResponse>(
+      ENDPOINTS.auth.apple,
+      { identityToken, email }
     );
     return response.data;
   },

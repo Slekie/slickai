@@ -121,6 +121,9 @@ const AccountCard: React.FC<AccountCardProps> = ({ item, index, onDelete }) => {
           <Pressable
             style={styles.deleteButton}
             onPress={() => onDelete(item)}
+            accessibilityRole="button"
+            accessibilityLabel={`Disconnect ${item.broker.toUpperCase()} account`}
+            accessibilityHint="Disconnects this broker account and stops all signals and trades"
           >
             <Ionicons name="unlink-outline" size={14} color={COLORS.error} />
             <Text style={styles.deleteButtonText}> Disconnect</Text>
@@ -294,7 +297,11 @@ export const AccountsScreen: React.FC = () => {
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.screenTitle}>Accounts</Text>
-        <Pressable style={styles.addButton} onPress={() => { resetModal(); setModalVisible(true); }}>
+        <Pressable style={styles.addButton} onPress={() => { resetModal(); setModalVisible(true); }}
+          accessibilityRole="button"
+          accessibilityLabel="Connect broker account"
+          accessibilityHint="Opens the broker account connection form"
+        >
           <LinearGradient colors={COLORS.gradientBuy} style={styles.addButtonGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <Ionicons name="add" size={18} color="#FFFFFF" />
             <Text style={styles.addButtonText}>Connect</Text>
@@ -370,6 +377,9 @@ export const AccountsScreen: React.FC = () => {
                       key={b.value}
                       style={[styles.brokerOption, selectedBroker === b.value && styles.brokerOptionSelected]}
                       onPress={() => { setSelectedBroker(b.value); setConnectError(null); }}
+                      accessibilityRole="tab"
+                      accessibilityLabel={`Select ${b.label} broker`}
+                      accessibilityState={{ selected: selectedBroker === b.value }}
                     >
                       <Ionicons
                         name={b.icon as any}
@@ -394,6 +404,7 @@ export const AccountsScreen: React.FC = () => {
                       placeholderTextColor={COLORS.textMuted}
                       autoCapitalize="none"
                       secureTextEntry
+                      accessibilityLabel="Deriv API token"
                     />
                     <Text style={styles.hintText}>
                       Get your token at app.deriv.com → Account Settings → API Token.{'\n'}
@@ -410,6 +421,7 @@ export const AccountsScreen: React.FC = () => {
                       placeholder="e.g. 12345678"
                       placeholderTextColor={COLORS.textMuted}
                       keyboardType="numeric"
+                      accessibilityLabel="MT5 login number"
                     />
                     <Text style={styles.inputLabel}>Password</Text>
                     <TextInput
@@ -419,6 +431,7 @@ export const AccountsScreen: React.FC = () => {
                       placeholder="Trading account password"
                       placeholderTextColor={COLORS.textMuted}
                       secureTextEntry
+                      accessibilityLabel="MT5 account password"
                     />
                     <Text style={styles.inputLabel}>Server</Text>
                     <TextInput
@@ -428,6 +441,7 @@ export const AccountsScreen: React.FC = () => {
                       placeholder="e.g. Deriv-Server"
                       placeholderTextColor={COLORS.textMuted}
                       autoCapitalize="none"
+                      accessibilityLabel="MT5 server address"
                     />
                   </>
                 )}
@@ -436,6 +450,8 @@ export const AccountsScreen: React.FC = () => {
                   <Pressable
                     style={styles.cancelButton}
                     onPress={() => { setModalVisible(false); resetModal(); }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cancel"
                   >
                     <Text style={styles.cancelButtonText}>Cancel</Text>
                   </Pressable>
@@ -443,6 +459,9 @@ export const AccountsScreen: React.FC = () => {
                     style={[styles.connectButton, isFetchingAccounts && styles.buttonDisabled]}
                     onPress={selectedBroker === 'deriv' ? handleFetchDerivAccounts : handleConnect}
                     disabled={isFetchingAccounts || isConnecting}
+                    accessibilityRole="button"
+                    accessibilityLabel={selectedBroker === 'deriv' ? 'Next step' : 'Connect account'}
+                    accessibilityState={{ disabled: isFetchingAccounts || isConnecting }}
                   >
                     {isFetchingAccounts || isConnecting ? (
                       <ActivityIndicator color="#FFFFFF" style={{ paddingVertical: 14 }} />
@@ -472,6 +491,9 @@ export const AccountsScreen: React.FC = () => {
                       key={acct.accountId}
                       style={[styles.accountOption, isSelected && styles.accountOptionSelected]}
                       onPress={() => setSelectedDerivAccountId(acct.accountId)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${isReal ? 'Live' : 'Demo'} account ${acct.accountId}, balance ${acct.balance} ${acct.currency}`}
+                      accessibilityState={{ selected: isSelected }}
                     >
                       <View style={styles.accountOptionLeft}>
                         <View style={[styles.accountTypeBadge, isReal ? styles.accountTypeBadgeReal : styles.accountTypeBadgeDemo]}>
@@ -491,6 +513,8 @@ export const AccountsScreen: React.FC = () => {
                   <Pressable
                     style={styles.cancelButton}
                     onPress={() => { setStep('credentials'); setConnectError(null); }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Back to credentials"
                   >
                     <Text style={styles.cancelButtonText}>← Back</Text>
                   </Pressable>
@@ -498,6 +522,9 @@ export const AccountsScreen: React.FC = () => {
                     style={[styles.connectButton, isConnecting && styles.buttonDisabled]}
                     onPress={handleConnect}
                     disabled={isConnecting}
+                    accessibilityRole="button"
+                    accessibilityLabel="Connect account"
+                    accessibilityState={{ disabled: isConnecting }}
                   >
                     {isConnecting ? (
                       <ActivityIndicator color="#FFFFFF" style={{ paddingVertical: 14 }} />

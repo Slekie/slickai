@@ -1,4 +1,4 @@
-import { useAccountStore } from '../store/accountStore';
+import { useAccountStore } from '../../store/accountStore';
 
 export function useAccountMode(accountId?: string) {
   const { accounts } = useAccountStore();

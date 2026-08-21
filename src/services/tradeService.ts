@@ -1,12 +1,8 @@
-import axios from 'axios';
-import { API_BASE_URL, API_TIMEOUT_MS, ENDPOINTS } from '../config/api';
+import { createAuthenticatedClient } from './apiClient';
+import { API_BASE_URL, ENDPOINTS } from '../config/api';
 import type { OpenPosition, PerformanceSummary, Trade } from '../store/tradeStore';
 
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: API_TIMEOUT_MS,
-  headers: { 'Content-Type': 'application/json' },
-});
+const apiClient = createAuthenticatedClient(API_BASE_URL);
 
 export const tradeService = {
   setAuthToken: (token: string) => {

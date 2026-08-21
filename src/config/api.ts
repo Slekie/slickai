@@ -10,27 +10,41 @@ export const WS_URL: string =
 export const API_TIMEOUT_MS = 15_000;
 
 export const ENDPOINTS = {
-  // Auth
-  login: '/auth/login',
-  register: '/auth/register',
-  refreshToken: '/auth/refresh',
-  biometric: '/auth/biometric',
+  auth: {
+    login:     '/auth/login',
+    register:  '/auth/register',
+    refresh:   '/auth/refresh',
+    biometric: '/auth/biometric',
+    google:    '/auth/google',
+    apple:     '/auth/apple',
+  },
 
-  // Accounts
-  accounts: '/accounts',
-  connectAccount: '/accounts/connect',
-  disconnectAccount: (id: string) => `/accounts/${id}`,
-  derivListAccounts: '/accounts/deriv/list-accounts',
-  subscriptionMode: '/settings/subscription-mode',
+  accounts: {
+    list:             '/accounts',
+    connect:          '/accounts/connect',
+    disconnect:       (id: string) => `/accounts/${id}`,
+    derivListAccounts:'/accounts/deriv/list-accounts',
+  },
 
-  // Signals
-  signals: '/signals',
+  settings: {
+    subscriptionMode: '/settings/subscription-mode',
+  },
 
-  // Trades
-  openPositions: '/trades/open',
-  closedTrades: '/trades',
-  performance: (period: string) => `/trades/performance/${period}`,
+  signals: {
+    list: '/signals',
+  },
 
-  // Notifications
-  registerPushToken: '/notifications/register',
+  trades: {
+    list:   '/trades',
+    detail: (id: string) => `/trades/${id}`,
+  },
+
+  performance: {
+    positions: '/trades/open',
+    summary:   '/trades/performance',
+  },
+
+  notifications: {
+    register: '/notifications/register',
+  },
 } as const;
