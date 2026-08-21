@@ -213,7 +213,8 @@ test('Property 7b — absent entitlement sets isSubscribed = false', () => {
 
 test('Property 8 — savings % for monthly plan is always 0', () => {
   fc.assert(
-    fc.property(fc.float({ min: Math.fround(0.01), max: Math.fround(1000) }), (monthlyPrice) => {
+    fc.property(fc.integer({ min: 1, max: 100000 }), (monthlyCents) => {
+      const monthlyPrice = monthlyCents / 100;
       return calcSavingsPercent(monthlyPrice, monthlyPrice) === 0;
     }),
     { numRuns: 100 },
@@ -223,9 +224,12 @@ test('Property 8 — savings % for monthly plan is always 0', () => {
 test('Property 8b — savings for quarterly/yearly is always >= 0 when cheaper per month', () => {
   fc.assert(
     fc.property(
-      fc.float({ min: Math.fround(0.01), max: Math.fround(100) }),
-      fc.float({ min: Math.fround(0.001), max: Math.fround(0.999) }), // discount fraction (0,1)
-      (monthlyPrice, discountFraction) => {
+      // Use integers scaled to cents to avoid float/NaN issues
+      fc.integer({ min: 1, max: 10000 }),      // monthly price in cents: $0.01–$100
+      fc.integer({ min: 1, max: 999 }),         // discount in per-mille: 0.1%–99.9%
+      (monthlyCents, discountPerMille) => {
+        const monthlyPrice = monthlyCents / 100;
+        const discountFraction = discountPerMille / 1000;
         const planMonthlyEq = monthlyPrice * (1 - discountFraction);
         const savings = calcSavingsPercent(planMonthlyEq, monthlyPrice);
         return savings >= 0;
