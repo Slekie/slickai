@@ -1,15 +1,9 @@
 /**
  * Push token registration integration test
  * Validates: Requirement 13.1
+ *
+ * expo-constants is mocked via __mocks__/expo-constants.js (see jest.config.js).
  */
-
-jest.mock('expo-constants', () => ({
-  default: {
-    expoConfig: {
-      extra: { eas: { projectId: 'test-project-id' } },
-    },
-  },
-}));
 
 jest.mock('expo-notifications', () => ({
   getExpoPushTokenAsync: jest.fn().mockResolvedValue({ data: 'ExponentPushToken[test]' }),
