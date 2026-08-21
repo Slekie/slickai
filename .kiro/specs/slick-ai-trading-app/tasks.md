@@ -310,7 +310,7 @@ This plan covers the remaining implementation work for the Slick AI trading comp
   - `formatCurrency(0)` → `"0"`
   - **Requirement refs:** 15.4
 
-- [ ] 26. Write property-based tests with `fast-check` (T-706)
+- [x] 26. Write property-based tests with `fast-check` (T-706)
 
   Create `src/__tests__/properties.test.ts`. Implement all 14 correctness properties using `fast-check`, each running ≥ 100 iterations, tagged with property number and text.
 
@@ -330,7 +330,7 @@ This plan covers the remaining implementation work for the Slick AI trading comp
   - Property 14: Axios auth header injection — every request carries `Authorization: Bearer {token}`
   - **Requirement refs:** Design — Correctness Properties 1–14
 
-- [ ] 27. Write integration tests (T-707)
+- [x] 27. Write integration tests (T-707)
 
   Create `src/__tests__/integration/` with WebSocket event routing, 401 interceptor, and push token registration tests.
 
@@ -339,7 +339,7 @@ This plan covers the remaining implementation work for the Slick AI trading comp
   - `pushToken.integration.test.ts`: mock `expo-notifications`, assert `POST /notifications/register` called with correct payload after login
   - **Requirement refs:** 11.4–11.9, 13.1
 
-- [ ] 28. Create EAS build configuration (T-801)
+- [x] 28. Create EAS build configuration (T-801)
 
   Create `eas.json` at project root with `development`, `preview`, and `production` build profiles.
 
@@ -349,7 +349,7 @@ This plan covers the remaining implementation work for the Slick AI trading comp
   - `cli.version >= 14.0.0`
   - **Requirement refs:** Design — CI/CD Pipeline
 
-- [ ] 29. Create GitHub Actions workflow (T-802)
+- [x] 29. Create GitHub Actions workflow (T-802)
 
   Create `.github/workflows/android-build.yml`. Trigger on push/PR to `main`. Run tests, then EAS dev build, then post PR comment with build URL.
 
@@ -359,7 +359,7 @@ This plan covers the remaining implementation work for the Slick AI trading comp
   - Store `EXPO_TOKEN` as GitHub Actions secret
   - **Requirement refs:** Design — CI/CD Pipeline
 
-- [ ] 30. Add ProGuard rules for Android release builds (T-803)
+- [x] 30. Add ProGuard rules for Android release builds (T-803)
 
   Create `android/app/proguard-rules.pro` with keep rules for React Native, Socket.IO, OkHttp, and Hermes.
 
