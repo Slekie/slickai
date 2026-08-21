@@ -7,6 +7,7 @@ module.exports = {
   moduleNameMapper: {
     '^expo-apple-authentication$': '<rootDir>/__mocks__/expo-apple-authentication.js',
     '^expo-constants$': '<rootDir>/__mocks__/expo-constants.js',
+    '^expo-notifications$': '<rootDir>/__mocks__/expo-notifications.js',
     '^react-native-purchases$': '<rootDir>/__mocks__/react-native-purchases.js',
     '^@react-native-community/netinfo$': '<rootDir>/__mocks__/@react-native-community/netinfo.js',
   },

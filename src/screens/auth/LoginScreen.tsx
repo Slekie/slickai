@@ -61,7 +61,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const logoScale = useSharedValue(0.6);
   const logoOpacity = useSharedValue(0);
   const formOpacity = useSharedValue(0);
-  const formSlide = useSharedValue(30);
 
   // Button press animation
   const btnScale = useSharedValue(1);
@@ -70,7 +69,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     logoScale.value = withTiming(1, { duration: 600 });
     logoOpacity.value = withTiming(1, { duration: 600 });
     formOpacity.value = withDelay(400, withTiming(1, { duration: 500 }));
-    formSlide.value = withDelay(400, withSpring(0, { damping: 14 }));
     authService.isBiometricAvailable().then(setBiometricAvailable).catch(() => undefined);
   }, []);
 
@@ -79,9 +77,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     opacity: logoOpacity.value,
   }));
 
-  const formAnimStyle = useAnimatedStyle(() => ({
+  const formFadeStyle = useAnimatedStyle(() => ({
     opacity: formOpacity.value,
-    transform: [{ translateY: formSlide.value }],
   }));
 
   const btnAnimStyle = useAnimatedStyle(() => ({
@@ -136,14 +133,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     <LinearGradient colors={COLORS.gradientBg} style={styles.container}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
           style={styles.flex}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          bounces={false}
         >
           {/* Logo */}
           <Animated.View style={[styles.logoContainer, logoAnimStyle]}>
@@ -159,7 +156,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             <Text style={styles.subtitle}>AI Trading Platform</Text>
           </Animated.View>
 
-          <Animated.View style={formAnimStyle}>
+          <Animated.View style={formFadeStyle}>
             {error && (
               <View style={styles.errorBanner}>
                 <Ionicons name="alert-circle" size={16} color={COLORS.error} />
@@ -191,6 +188,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                   onFocus={() => setFocused((f) => ({ ...f, email: true }))}
                   onBlur={() => setFocused((f) => ({ ...f, email: false }))}
                   accessibilityLabel="Email address"
+                  returnKeyType="next"
                 />
               </View>
             </View>
@@ -212,6 +210,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                   onFocus={() => setFocused((f) => ({ ...f, password: true }))}
                   onBlur={() => setFocused((f) => ({ ...f, password: false }))}
                   accessibilityLabel="Password"
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
                 />
               </View>
             </View>
@@ -262,20 +262,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
             {/* Google Sign-In */}
             <GoogleSignInButton
-              onSuccess={() => {
-                // The authStore.login() call inside GoogleSignInButton updates
-                // isAuthenticated, which causes RootNavigator to switch to
-                // MainTabNavigator automatically — no explicit navigation needed.
-              }}
+              onSuccess={() => { /* store update triggers navigation automatically */ }}
               onError={(err) => setError(err.message)}
             />
 
-            {/* Apple Sign-In (iOS only — returns null on Android / Expo Go) */}
+            {/* Apple Sign-In (iOS only) */}
             <AppleSignInButton
-              onSuccess={() => {
-                // Same as Google: authStore.login() triggers RootNavigator to
-                // switch to MainTabNavigator automatically.
-              }}
+              onSuccess={() => { /* store update triggers navigation automatically */ }}
               onError={(err) => setError(err.message)}
             />
 
