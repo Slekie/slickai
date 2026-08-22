@@ -70,21 +70,30 @@ export function createAuthenticatedClient(
         }
 
         // Exchange refresh token for new access token
-        const refreshResponse = await axios.post<{ token: string }>(
+        const refreshResponse = await axios.post<{ token: string; refreshToken?: string }>(
           `${baseURL}${ENDPOINTS.auth.refresh}`,
           { refreshToken },
           { timeout: API_TIMEOUT_MS },
         );
 
         const newToken = refreshResponse.data.token;
+        const newRefreshToken = refreshResponse.data.refreshToken;
 
-        // Persist new token and update auth store
+        // Persist new access token
         await SecureStore.setItemAsync(SECURE_STORE_TOKEN_KEY, newToken);
+
+        // If the backend issued a rotated refresh token, persist it too
+        if (newRefreshToken) {
+          await SecureStore.setItemAsync(SECURE_STORE_REFRESH_KEY, newRefreshToken);
+        }
+
         // Dynamically import authStore to avoid circular dep at module level
         const { useAuthStore } = await import('../store/authStore');
         const state = useAuthStore.getState();
         if (state.user) {
-          await state.login(state.user, newToken);
+          // Pass newRefreshToken so the store rotates it when present;
+          // login() already handles the undefined case (keeps existing token)
+          await state.login(state.user, newToken, newRefreshToken);
         }
 
         // Update the Authorization header on the shared client and retry

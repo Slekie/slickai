@@ -10,7 +10,7 @@ import Animated, {
 import { COLORS } from '../theme';
 
 interface SkeletonLineProps {
-  width?: string | number;
+  width?: ViewStyle['width'];
   height?: number;
   style?: ViewStyle;
 }
@@ -39,7 +39,7 @@ const SkeletonLine: React.FC<SkeletonLineProps> = ({
     <Animated.View
       style={[
         styles.skeleton,
-        { width: width as number, height, borderRadius: height / 2 },
+        { width, height, borderRadius: height / 2 },
         animStyle,
         style,
       ]}

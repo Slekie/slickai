@@ -20,6 +20,9 @@ import { COLORS, FONTS, SPACING } from '../theme';
  */
 export const NetworkBanner: React.FC = () => {
   const [isOffline, setIsOffline] = useState(false);
+  // JS-thread state that controls whether the component is in the React tree.
+  // Avoids reading Reanimated shared value (.value) during render.
+  const [isVisible, setIsVisible] = useState(false);
   // Track first render to avoid false positives before NetInfo resolves
   const hasInitialized = useRef(false);
 
@@ -34,11 +37,15 @@ export const NetworkBanner: React.FC = () => {
   // Show / hide banner with smooth animation
   useEffect(() => {
     if (isOffline) {
+      setIsVisible(true);
       translateY.value = withTiming(0, { duration: 300 });
       opacity.value = withTiming(1, { duration: 300 });
     } else {
       translateY.value = withTiming(60, { duration: 300 });
       opacity.value = withTiming(0, { duration: 300 });
+      // Remove from tree after the hide animation completes
+      const timer = setTimeout(() => setIsVisible(false), 300);
+      return () => clearTimeout(timer);
     }
   }, [isOffline]);
 
@@ -67,8 +74,8 @@ export const NetworkBanner: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // Don't render anything in the tree when online (keeps layout clean)
-  if (!isOffline && opacity.value === 0) return null;
+  // Don't render anything in the tree when not visible (keeps layout clean)
+  if (!isVisible) return null;
 
   return (
     <Animated.View style={[styles.banner, animStyle]} pointerEvents="none">

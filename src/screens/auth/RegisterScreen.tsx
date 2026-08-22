@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -45,18 +46,19 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
   const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState<FocusState>({ email: false, password: false, confirm: false });
 
+  const passwordRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInput>(null);
+
+  // Fade in only — no translateY to prevent shaking with keyboard
   const formOpacity = useSharedValue(0);
-  const formSlide = useSharedValue(30);
   const btnScale = useSharedValue(1);
 
   useEffect(() => {
     formOpacity.value = withTiming(1, { duration: 500 });
-    formSlide.value = withSpring(0, { damping: 14 });
   }, []);
 
   const formAnimStyle = useAnimatedStyle(() => ({
     opacity: formOpacity.value,
-    transform: [{ translateY: formSlide.value }],
   }));
 
   const btnAnimStyle = useAnimatedStyle(() => ({
@@ -89,7 +91,13 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.inner}>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
           <Animated.View style={formAnimStyle}>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>Join Slick AI Trading Platform</Text>
@@ -116,6 +124,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
                   autoCapitalize="none"
                   autoComplete="email"
                   editable={!isLoading}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
                   onFocus={() => setFocused((f) => ({ ...f, email: true }))}
                   onBlur={() => setFocused((f) => ({ ...f, email: false }))}
                   accessibilityLabel="Email address"
@@ -129,6 +139,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
               <View style={[styles.inputWrapper, focused.password && styles.inputWrapperFocused]}>
                 <Ionicons name="lock-closed-outline" size={18} color={focused.password ? COLORS.primary : COLORS.textSecondary} style={styles.inputIcon} />
                 <TextInput
+                  ref={passwordRef}
                   style={styles.input}
                   value={password}
                   onChangeText={setPassword}
@@ -137,6 +148,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
                   secureTextEntry
                   autoComplete="new-password"
                   editable={!isLoading}
+                  returnKeyType="next"
+                  onSubmitEditing={() => confirmRef.current?.focus()}
                   onFocus={() => setFocused((f) => ({ ...f, password: true }))}
                   onBlur={() => setFocused((f) => ({ ...f, password: false }))}
                   accessibilityLabel="Password"
@@ -150,6 +163,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
               <View style={[styles.inputWrapper, focused.confirm && styles.inputWrapperFocused]}>
                 <Ionicons name="checkmark-circle-outline" size={18} color={focused.confirm ? COLORS.primary : COLORS.textSecondary} style={styles.inputIcon} />
                 <TextInput
+                  ref={confirmRef}
                   style={styles.input}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -158,6 +172,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
                   secureTextEntry
                   autoComplete="new-password"
                   editable={!isLoading}
+                  returnKeyType="done"
+                  onSubmitEditing={handleRegister}
                   onFocus={() => setFocused((f) => ({ ...f, confirm: true }))}
                   onBlur={() => setFocused((f) => ({ ...f, confirm: false }))}
                   accessibilityLabel="Confirm password"
@@ -207,7 +223,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
               </Text>
             </Pressable>
           </Animated.View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
   );
@@ -216,9 +232,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1 },
-  inner: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: SPACING.md,
+    paddingTop: 60,
+    paddingBottom: SPACING.xl,
     justifyContent: 'center',
   },
   title: {
@@ -264,6 +282,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.border,
+    minHeight: 52,
   },
   inputWrapperFocused: {
     borderColor: COLORS.primary,
@@ -275,13 +294,16 @@ const styles = StyleSheet.create({
   },
   inputIcon: {
     paddingLeft: 14,
+    paddingRight: 2,
   },
   input: {
     flex: 1,
     color: COLORS.text,
     fontSize: FONTS.sizes.md,
     paddingHorizontal: 12,
-    paddingVertical: 14,
+    paddingVertical: 0,
+    height: 52,
+    textAlignVertical: 'center',
   },
   registerButton: {
     borderRadius: RADIUS.md,

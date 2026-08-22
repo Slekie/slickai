@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { authService } from '../../services/authService';
 import { useAuthStore } from '../../store/authStore';
-import { COLORS, FONTS, RADIUS, SPACING } from '../../theme';
+import { FONTS, RADIUS, SPACING } from '../../theme';
 
 // ---------------------------------------------------------------------------
 // expo-apple-authentication is a native module — it requires a dev/production
@@ -93,11 +93,11 @@ const AppleSignInButtonIOS: React.FC<AppleSignInButtonProps> = ({
           return;
         }
 
-        const { user, token } = await authService.loginWithApple(
+        const { user, token, refreshToken } = await authService.loginWithApple(
           credential.identityToken,
           credential.email ?? null,
         );
-        await authStore.login(user, token);
+        await authStore.login(user, token, refreshToken);
         onSuccess();
       } catch (err: unknown) {
         // ERR_CANCELED — user dismissed the sheet, silently ignore

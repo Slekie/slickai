@@ -128,6 +128,12 @@ class WebSocketService {
   private _connect(): void {
     this.isConnecting = true;
 
+    if (this.socket) {
+      this.socket.removeAllListeners();
+      this.socket.disconnect();
+      this.socket = null;
+    }
+
     this.socket = io(WS_URL, {
       auth: { token: this.token },
       transports: ['websocket'],

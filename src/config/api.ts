@@ -42,6 +42,7 @@ export const ENDPOINTS = {
   performance: {
     positions: '/trades/open',
     summary:   '/trades/performance',
+    equity:    '/trades/equity',
   },
 
   notifications: {

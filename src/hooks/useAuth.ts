@@ -1,5 +1,9 @@
 import { useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
+import { useSubscriptionStore } from '../store/subscriptionStore';
+import { useAccountStore } from '../store/accountStore';
+import { useSignalStore } from '../store/signalStore';
+import { useTradeStore } from '../store/tradeStore';
 import { authService } from '../services/authService';
 import { accountService } from '../services/accountService';
 import { signalService } from '../services/signalService';
@@ -71,6 +75,18 @@ export function useAuth() {
 
   const logout = useCallback(async (): Promise<void> => {
     websocketService.disconnect();
+    // Reset all stores before logging out to prevent data leakage between sessions
+    useSubscriptionStore.getState().clearSubscription();
+    useAccountStore.setState({ accounts: [], isLoading: false, error: null });
+    useSignalStore.setState({ signals: [], isLoading: false, error: null });
+    useTradeStore.setState({
+      trades: [],
+      openPositions: [],
+      performanceSummary: null,
+      selectedPeriod: '7D',
+      isLoading: false,
+      error: null,
+    });
     await store.logout();
   }, [store]);
 

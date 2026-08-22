@@ -1,6 +1,7 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -11,12 +12,31 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
+import * as SecureStore from 'expo-secure-store';
 import { useAccountStore } from '../../store/accountStore';
 import { useAuthStore } from '../../store/authStore';
 import { accountService } from '../../services/accountService';
+import { notificationService } from '../../services/notificationService';
 import { useAuth } from '../../hooks/useAuth';
 import { COLORS, FONTS, RADIUS, SPACING } from '../../theme';
 import type { ConnectedAccount, SubscriptionMode } from '../../store/accountStore';
+
+/**
+ * Trigger haptic feedback only if the user has not disabled it.
+ * Safe to call anywhere in the app — reads preference from SecureStore.
+ */
+export async function triggerHaptic(
+  style: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light,
+): Promise<void> {
+  try {
+    const enabled = await SecureStore.getItemAsync('slickai_haptics_enabled');
+    if (enabled === 'false') return;
+    await Haptics.impactAsync(style);
+  } catch {
+    // Haptics not available on all devices
+  }
+}
 
 interface SettingRowProps {
   icon: string;
@@ -125,6 +145,31 @@ export const SettingsScreen: React.FC = () => {
   const [hapticEnabled, setHapticEnabled] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
+  // Load persisted preferences on mount
+  useEffect(() => {
+    void (async () => {
+      const [haptic, notifs] = await Promise.all([
+        SecureStore.getItemAsync('slickai_haptics_enabled'),
+        SecureStore.getItemAsync('slickai_notifications_enabled'),
+      ]);
+      if (haptic !== null) setHapticEnabled(haptic === 'true');
+      if (notifs !== null) setNotificationsEnabled(notifs === 'true');
+    })();
+  }, []);
+
+  const handleNotificationsToggle = useCallback(async (value: boolean) => {
+    setNotificationsEnabled(value);
+    await SecureStore.setItemAsync('slickai_notifications_enabled', value ? 'true' : 'false');
+    if (value) {
+      await notificationService.requestPermissions();
+    }
+  }, []);
+
+  const handleHapticToggle = useCallback(async (value: boolean) => {
+    setHapticEnabled(value);
+    await SecureStore.setItemAsync('slickai_haptics_enabled', value ? 'true' : 'false');
+  }, []);
+
   const handleToggleMode = useCallback((account: ConnectedAccount) => {
     const targetMode: SubscriptionMode =
       account.subscriptionMode === 'signal_delivery' ? 'automated_trading' : 'signal_delivery';
@@ -189,7 +234,7 @@ export const SettingsScreen: React.FC = () => {
           rightElement={
             <Switch
               value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
+              onValueChange={(v) => void handleNotificationsToggle(v)}
               trackColor={{ false: COLORS.border, true: COLORS.primary }}
               thumbColor={notificationsEnabled ? '#FFFFFF' : '#AAAAAA'}
               accessibilityLabel="Push notifications"
@@ -204,7 +249,7 @@ export const SettingsScreen: React.FC = () => {
           rightElement={
             <Switch
               value={hapticEnabled}
-              onValueChange={setHapticEnabled}
+              onValueChange={(v) => void handleHapticToggle(v)}
               trackColor={{ false: COLORS.border, true: COLORS.primary }}
               thumbColor={hapticEnabled ? '#FFFFFF' : '#AAAAAA'}
               accessibilityLabel="Haptic feedback"
@@ -279,9 +324,9 @@ export const SettingsScreen: React.FC = () => {
       <View style={styles.settingsCard}>
         <SettingRow icon="information-circle-outline" label="Version" value="1.0.0" />
         <View style={styles.rowSeparator} />
-        <SettingRow icon="shield-checkmark-outline" label="Privacy Policy" onPress={() => {}} />
+        <SettingRow icon="shield-checkmark-outline" label="Privacy Policy" onPress={() => void Linking.openURL('https://slickai.com/privacy')} />
         <View style={styles.rowSeparator} />
-        <SettingRow icon="document-text-outline" label="Terms of Service" onPress={() => {}} />
+        <SettingRow icon="document-text-outline" label="Terms of Service" onPress={() => void Linking.openURL('https://slickai.com/terms')} />
       </View>
 
       {/* Sign out */}

@@ -51,7 +51,7 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
-  const sign = displayed > 0 ? '+' : '';
+  const sign = value > 0 ? '+' : '';
   const text = `${prefix}${sign}${displayed.toFixed(decimals)}${suffix}`;
 
   return (

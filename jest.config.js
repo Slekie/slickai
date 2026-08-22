@@ -17,6 +17,4 @@ module.exports = {
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
   ],
-  // Prevent open handles from keeping Jest running
-  testEnvironment: 'node',
 };

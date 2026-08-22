@@ -40,7 +40,7 @@ export const accountService = {
    */
   listDerivAccounts: async (pat: string): Promise<DerivAccount[]> => {
     const response = await apiClient.post<{ success: boolean; accounts: DerivAccount[] }>(
-      `${ENDPOINTS.accounts.list}/deriv/list-accounts`,
+      ENDPOINTS.accounts.derivListAccounts,
       { pat },
       { timeout: 12_000 },
     );

@@ -55,4 +55,27 @@ export const tradeService = {
     );
     return response.data;
   },
+
+  /**
+   * Fetch equity curve data points for the given period.
+   * Returns an empty array if the endpoint returns 404 (no trade history yet).
+   */
+  getEquityCurve: async (
+    period: '1D' | '7D' | '30D' | 'ALL' = '7D'
+  ): Promise<{ timestamp: string; equity: number }[]> => {
+    try {
+      const response = await apiClient.get<{ timestamp: string; equity: number }[]>(
+        ENDPOINTS.performance.equity,
+        { params: { period } }
+      );
+      return response.data;
+    } catch (err) {
+      // Graceful fallback — no equity history yet or endpoint not available
+      const { default: axios } = await import('axios');
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
+        return [];
+      }
+      throw err;
+    }
+  },
 };

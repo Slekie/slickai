@@ -114,7 +114,7 @@ const AppContent: React.FC = () => {
   }, [isAuthenticated, user?.userId]);
 
   if (!isAuthenticated) return <AuthNavigator />;
-  if (checkingSubscription) return null; // brief blank while checking
+  if (checkingSubscription) return <SplashScreen />;
 
   return isSubscribed ? (
     <ErrorBoundary>

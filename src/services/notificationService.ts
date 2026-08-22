@@ -144,12 +144,23 @@ class NotificationService {
 
   /**
    * Get the Expo push token for this device.
+   * Requires a projectId from EAS config (Expo SDK 53+).
    */
   async getPushToken(): Promise<string | null> {
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const Notifications = require('expo-notifications') as typeof import('expo-notifications');
-      const token = await Notifications.getExpoPushTokenAsync();
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
+      if (!projectId) {
+        if (__DEV__) {
+          console.warn(
+            '[Notifications] No EAS projectId found in app.json. ' +
+              'getPushToken skipped.',
+          );
+        }
+        return null;
+      }
+      const token = await Notifications.getExpoPushTokenAsync({ projectId });
       return token.data;
     } catch {
       console.warn('[Notifications] Failed to get push token');

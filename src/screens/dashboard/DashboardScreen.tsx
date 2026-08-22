@@ -25,6 +25,7 @@ import { useTradeStore } from '../../store/tradeStore';
 import { tradeService } from '../../services/tradeService';
 import { useAccountStore } from '../../store/accountStore';
 import { useAuthStore } from '../../store/authStore';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import { COLORS, FONTS, RADIUS, SPACING } from '../../theme';
 
 type Period = '1D' | '7D' | '30D' | 'ALL';
@@ -46,9 +47,10 @@ export const DashboardScreen: React.FC = () => {
 
   const { accounts } = useAccountStore();
   const { user } = useAuthStore();
-  const [equityData] = useState<{ timestamp: string; equity: number }[]>([]);
+  const [equityData, setEquityData] = useState<{ timestamp: string; equity: number }[]>([]);
+  const [equityLoading, setEquityLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [wsConnected] = useState(true); // Reflect WS state here
+  const { isConnected: wsConnected } = useWebSocket();
 
   const hasAutomatedAccount = accounts.some((a) => a.subscriptionMode === 'automated_trading');
 
@@ -69,17 +71,21 @@ export const DashboardScreen: React.FC = () => {
   const loadDashboard = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setEquityLoading(true);
     try {
-      const [positions, summary] = await Promise.all([
+      const [positions, summary, equity] = await Promise.all([
         tradeService.getOpenPositions(),
         tradeService.getPerformanceSummary(selectedPeriod),
+        tradeService.getEquityCurve(selectedPeriod),
       ]);
       setOpenPositions(positions);
       setPerformanceSummary(summary);
+      setEquityData(equity);
     } catch {
       setError('Failed to load dashboard data');
     } finally {
       setLoading(false);
+      setEquityLoading(false);
     }
   }, [selectedPeriod, setOpenPositions, setPerformanceSummary, setError, setLoading]);
 
@@ -89,17 +95,21 @@ export const DashboardScreen: React.FC = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    setEquityLoading(true);
     try {
-      const [positions, summary] = await Promise.all([
+      const [positions, summary, equity] = await Promise.all([
         tradeService.getOpenPositions(),
         tradeService.getPerformanceSummary(selectedPeriod),
+        tradeService.getEquityCurve(selectedPeriod),
       ]);
       setOpenPositions(positions);
       setPerformanceSummary(summary);
+      setEquityData(equity);
     } catch {
       // Silently fail on pull-to-refresh
     } finally {
       setRefreshing(false);
+      setEquityLoading(false);
     }
   }, [selectedPeriod, setOpenPositions, setPerformanceSummary]);
 
@@ -223,7 +233,7 @@ export const DashboardScreen: React.FC = () => {
 
           {/* Equity chart */}
           <Text style={styles.sectionTitle}>Equity Curve</Text>
-          <EquityChart data={equityData} height={180} />
+          {equityLoading ? <SkeletonCard /> : <EquityChart data={equityData} height={180} />}
 
           {/* Open positions */}
           <Text style={styles.sectionTitle}>

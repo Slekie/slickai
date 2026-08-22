@@ -74,7 +74,6 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
     if (!response) return;
 
     if (response.type === 'cancel' || response.type === 'dismiss') {
-      // User cancelled — silently do nothing.
       if (mounted.current) setIsLoading(false);
       return;
     }
@@ -99,8 +98,8 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
 
       void (async () => {
         try {
-          const { user, token } = await authService.loginWithGoogle(idToken);
-          await authStore.login(user, token);
+          const { user, token, refreshToken } = await authService.loginWithGoogle(idToken);
+          await authStore.login(user, token, refreshToken);
           if (mounted.current) {
             setIsLoading(false);
             onSuccess();
@@ -117,7 +116,7 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         }
       })();
     }
-  }, [response]);
+  }, [response, onSuccess, onError]);
 
   const handlePress = async () => {
     setIsLoading(true);

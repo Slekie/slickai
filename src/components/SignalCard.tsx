@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -6,7 +6,6 @@ import Animated, {
   withDelay,
   withTiming,
   withSpring,
-  Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, RADIUS, SPACING } from '../theme';
@@ -32,7 +31,6 @@ function formatTime(isoString: string): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-const AnimatedView = Animated.createAnimatedComponent(View);
 
 export const SignalCard: React.FC<SignalCardProps> = ({
   signal,
@@ -45,25 +43,43 @@ export const SignalCard: React.FC<SignalCardProps> = ({
 
   const fadeAnim = useSharedValue(0);
   const slideAnim = useSharedValue(40);
-  const confWidth = useSharedValue(0);
+  // JS-thread state for confidence bar width — avoids passing string to Reanimated worklet
+  const [confBarWidth, setConfBarWidth] = useState(0);
 
   useEffect(() => {
     fadeAnim.value = withDelay(index * 80, withTiming(1, { duration: 400 }));
     slideAnim.value = withDelay(index * 80, withSpring(0, { damping: 14 }));
-    confWidth.value = withDelay(
-      index * 80 + 300,
-      withTiming(confidencePercent, { duration: 600, easing: Easing.out(Easing.cubic) })
-    );
   }, []);
+
+  // Drive confidenceBarBg width from JS state, not Reanimated worklet
+  useEffect(() => {
+    const target = confidencePercent;
+    const steps = 30;
+    const stepDuration = 600 / steps;
+    let step = 0;
+    const startDelay = index * 80 + 300;
+    const timeout = setTimeout(() => {
+      const interval = setInterval(() => {
+        step += 1;
+        const progress = step / steps;
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setConfBarWidth(target * eased);
+        if (step >= steps) {
+          setConfBarWidth(target);
+          clearInterval(interval);
+        }
+      }, stepDuration);
+      return () => clearInterval(interval);
+    }, startDelay);
+    return () => clearTimeout(timeout);
+  }, [confidencePercent, index]);
 
   const cardAnimStyle = useAnimatedStyle(() => ({
     opacity: fadeAnim.value,
     transform: [{ translateY: slideAnim.value }],
   }));
 
-  const confBarStyle = useAnimatedStyle(() => ({
-    width: `${confWidth.value}%` as unknown as number,
-  }));
+  // confBarStyle removed — width now comes from JS-thread confBarWidth state
 
   const dirGradient: readonly [string, string] = signal.direction === 'BUY'
     ? COLORS.gradientBuy
@@ -113,11 +129,10 @@ export const SignalCard: React.FC<SignalCardProps> = ({
       <View style={styles.confidenceRow}>
         <Text style={styles.confidenceLabel}>Confidence</Text>
         <View style={styles.confidenceBarBg}>
-          <AnimatedView
+          <View
             style={[
               styles.confidenceFill,
-              { backgroundColor: directionColor },
-              confBarStyle,
+              { backgroundColor: directionColor, width: `${confBarWidth}%` },
             ]}
           />
         </View>
