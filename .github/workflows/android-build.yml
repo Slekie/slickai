@@ -36,6 +36,7 @@ jobs:
         run: eas build --platform android --profile development --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
 
       - name: Comment EAS build link on PR
         if: github.event_name == 'pull_request'
