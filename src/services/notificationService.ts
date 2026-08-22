@@ -10,6 +10,15 @@ export interface NotificationPayload {
 }
 
 /**
+ * Returns true when the app is running inside Expo Go.
+ * In Expo Go, remote push notifications are not supported (SDK 53+).
+ * Local notifications still work.
+ */
+function isExpoGo(): boolean {
+  return Constants.executionEnvironment === 'storeClient';
+}
+
+/**
  * Notification service wraps Expo Notifications for push notification setup.
  * Expo SDK 51 notification APIs require the expo-notifications package.
  * This service provides a graceful wrapper that degrades when the package
@@ -21,9 +30,12 @@ class NotificationService {
   /**
    * Request notification permissions from the OS.
    * Returns true if permission was granted.
+   * Skipped in Expo Go — remote push not supported there (SDK 53+).
    */
   async requestPermissions(): Promise<boolean> {
     if (Platform.OS === 'web') return false;
+    // Expo Go does not support push notifications — skip to suppress the warning
+    if (isExpoGo()) return false;
 
     try {
       // Dynamic import to avoid hard crash when expo-notifications is not linked
@@ -39,9 +51,12 @@ class NotificationService {
 
   /**
    * Initialize the notification service and configure foreground handler.
+   * Skipped in Expo Go — remote push not supported there (SDK 53+).
    */
   async initialize(): Promise<void> {
     if (this.initialized) return;
+    // Expo Go does not support push notifications — skip to suppress the warning
+    if (isExpoGo()) return;
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -81,12 +96,13 @@ class NotificationService {
 
   /**
    * Register the device's Expo push token with the backend.
-   * Requires a dev/production build on Android (SDK 53+).
-   * Gracefully no-ops in Expo Go where push tokens are unavailable.
+   * Requires a dev/production build — skipped in Expo Go (SDK 53+).
    *
    * @param authToken  JWT of the authenticated user (for the Authorization header)
    */
   async registerPushToken(authToken: string): Promise<void> {
+    // Expo Go does not support remote push tokens
+    if (isExpoGo()) return;
     try {
       const Notifications = require('expo-notifications') as typeof import('expo-notifications');
 
@@ -144,9 +160,10 @@ class NotificationService {
 
   /**
    * Get the Expo push token for this device.
-   * Requires a projectId from EAS config (Expo SDK 53+).
+   * Requires a dev/production build — skipped in Expo Go (SDK 53+).
    */
   async getPushToken(): Promise<string | null> {
+    if (isExpoGo()) return null;
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const Notifications = require('expo-notifications') as typeof import('expo-notifications');

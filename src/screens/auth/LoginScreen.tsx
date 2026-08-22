@@ -133,7 +133,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     <LinearGradient colors={COLORS.gradientBg} style={styles.container}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
       >
         <ScrollView
           style={styles.flex}
@@ -299,9 +300,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: SPACING.md,
-    paddingTop: 60,
+    paddingTop: 80,
     paddingBottom: SPACING.xl,
-    justifyContent: 'center',
   },
   logoContainer: {
     alignItems: 'center',
