@@ -12,9 +12,7 @@ import {
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withTiming,
   withSpring,
-  withDelay,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,28 +55,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [focused, setFocused] = useState<FocusState>({ email: false, password: false });
 
   const passwordRef = useRef<TextInput>(null);
-  const logoScale = useSharedValue(0.6);
-  const logoOpacity = useSharedValue(0);
-  const formOpacity = useSharedValue(0);
 
-  // Button press animation
+  // Only keep button press animation — no entrance animations that interfere with keyboard
   const btnScale = useSharedValue(1);
 
   useEffect(() => {
-    logoScale.value = withTiming(1, { duration: 600 });
-    logoOpacity.value = withTiming(1, { duration: 600 });
-    formOpacity.value = withDelay(400, withTiming(1, { duration: 500 }));
     authService.isBiometricAvailable().then(setBiometricAvailable).catch(() => undefined);
   }, []);
-
-  const logoAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: logoScale.value }],
-    opacity: logoOpacity.value,
-  }));
-
-  const formFadeStyle = useAnimatedStyle(() => ({
-    opacity: formOpacity.value,
-  }));
 
   const btnAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: btnScale.value }],
@@ -138,154 +121,162 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         bounces={false}
         automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       >
-          {/* Logo */}
-          <Animated.View style={[styles.logoContainer, logoAnimStyle]}>
-            <LinearGradient
-              colors={COLORS.gradientBuy}
-              style={styles.logoGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Ionicons name="trending-up" size={36} color="#FFFFFF" />
-            </LinearGradient>
-            <Text style={styles.title}>Slick AI</Text>
-            <Text style={styles.subtitle}>AI Trading Platform</Text>
-          </Animated.View>
+        {/* Logo — plain View, no animation */}
+        <View style={styles.logoContainer}>
+          <LinearGradient
+            colors={COLORS.gradientBuy}
+            style={styles.logoGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Ionicons name="trending-up" size={36} color="#FFFFFF" />
+          </LinearGradient>
+          <Text style={styles.title}>Slick AI</Text>
+          <Text style={styles.subtitle}>AI Trading Platform</Text>
+        </View>
 
-          <Animated.View style={formFadeStyle}>
-            {error && (
-              <View style={styles.errorBanner}>
-                <Ionicons name="alert-circle" size={16} color={COLORS.error} />
-                <Text style={styles.errorText}> {error}</Text>
-              </View>
-            )}
-
-            {failedAttempts > 0 && !isLockedOut && (
-              <Text style={styles.attemptsWarning}>
-                {failedAttempts} failed attempt{failedAttempts !== 1 ? 's' : ''} — locks after 3
-              </Text>
-            )}
-
-            {/* Email */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email</Text>
-              <View style={[styles.inputWrapper, focused.email && styles.inputWrapperFocused]}>
-                <Ionicons name="mail-outline" size={18} color={focused.email ? COLORS.primary : COLORS.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="your@email.com"
-                  placeholderTextColor={COLORS.textMuted}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  editable={!isLoading}
-                  onFocus={() => setFocused((f) => ({ ...f, email: true }))}
-                  onBlur={() => setFocused((f) => ({ ...f, email: false }))}
-                  accessibilityLabel="Email address"
-                  returnKeyType="next"
-                  onSubmitEditing={() => passwordRef.current?.focus()}
-                />
-              </View>
+        {/* Form — plain View, no animation */}
+        <View>
+          {error && (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle" size={16} color={COLORS.error} />
+              <Text style={styles.errorText}> {error}</Text>
             </View>
+          )}
 
-            {/* Password */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Password</Text>
-              <View style={[styles.inputWrapper, focused.password && styles.inputWrapperFocused]}>
-                <Ionicons name="lock-closed-outline" size={18} color={focused.password ? COLORS.primary : COLORS.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  ref={passwordRef}
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="••••••••"
-                  placeholderTextColor={COLORS.textMuted}
-                  secureTextEntry
-                  autoComplete="current-password"
-                  editable={!isLoading}
-                  onFocus={() => setFocused((f) => ({ ...f, password: true }))}
-                  onBlur={() => setFocused((f) => ({ ...f, password: false }))}
-                  accessibilityLabel="Password"
-                  returnKeyType="done"
-                  onSubmitEditing={handleLogin}
-                />
-              </View>
+          {failedAttempts > 0 && !isLockedOut && (
+            <Text style={styles.attemptsWarning}>
+              {failedAttempts} failed attempt{failedAttempts !== 1 ? 's' : ''} — locks after 3
+            </Text>
+          )}
+
+          {/* Email */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Email</Text>
+            <View style={[styles.inputWrapper, focused.email && styles.inputWrapperFocused]}>
+              <Ionicons
+                name="mail-outline"
+                size={18}
+                color={focused.email ? COLORS.primary : COLORS.textSecondary}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="your@email.com"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                editable={!isLoading}
+                returnKeyType="next"
+                onSubmitEditing={() => passwordRef.current?.focus()}
+                onFocus={() => setFocused((f) => ({ ...f, email: true }))}
+                onBlur={() => setFocused((f) => ({ ...f, email: false }))}
+                accessibilityLabel="Email address"
+              />
             </View>
+          </View>
 
-            {/* Login button */}
-            <Animated.View style={btnAnimStyle}>
-              <Pressable
-                style={[styles.loginButton, isLoading && styles.buttonDisabled]}
-                onPress={handleLogin}
-                onPressIn={() => { btnScale.value = withSpring(0.96); }}
-                onPressOut={() => { btnScale.value = withSpring(1); }}
-                disabled={isLoading}
-                accessibilityRole="button"
-                accessibilityLabel="Sign in"
-                accessibilityHint="Signs you into your Slick AI account"
-                accessibilityState={{ disabled: isLoading }}
-              >
-                <LinearGradient
-                  colors={COLORS.gradientBuy}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.loginGradient}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.loginButtonText}>Sign In</Text>
-                  )}
-                </LinearGradient>
-              </Pressable>
-            </Animated.View>
+          {/* Password */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Password</Text>
+            <View style={[styles.inputWrapper, focused.password && styles.inputWrapperFocused]}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={18}
+                color={focused.password ? COLORS.primary : COLORS.textSecondary}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                ref={passwordRef}
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="••••••••"
+                placeholderTextColor={COLORS.textMuted}
+                secureTextEntry
+                autoComplete="current-password"
+                editable={!isLoading}
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+                onFocus={() => setFocused((f) => ({ ...f, password: true }))}
+                onBlur={() => setFocused((f) => ({ ...f, password: false }))}
+                accessibilityLabel="Password"
+              />
+            </View>
+          </View>
 
-            {/* Biometric */}
-            {biometricAvailable && (
-              <Pressable
-                style={styles.biometricButton}
-                onPress={handleBiometric}
-                disabled={isLoading}
-                accessibilityRole="button"
-                accessibilityLabel="Sign in with biometrics"
-                accessibilityHint="Authenticates using your device biometrics"
-                accessibilityState={{ disabled: isLoading }}
-              >
-                <Ionicons name="finger-print" size={20} color={COLORS.text} />
-                <Text style={styles.biometricButtonText}>  Sign in with Biometrics</Text>
-              </Pressable>
-            )}
-
-            {/* Google Sign-In */}
-            <GoogleSignInButton
-              onSuccess={() => { /* store update triggers navigation automatically */ }}
-              onError={(err) => setError(err.message)}
-            />
-
-            {/* Apple Sign-In (iOS only) */}
-            <AppleSignInButton
-              onSuccess={() => { /* store update triggers navigation automatically */ }}
-              onError={(err) => setError(err.message)}
-            />
-
-            {/* Register link */}
+          {/* Login button — keeps press scale animation, safe because it's not triggered by keyboard */}
+          <Animated.View style={btnAnimStyle}>
             <Pressable
-              style={styles.registerLink}
-              onPress={() => navigation.navigate('Register')}
+              style={[styles.loginButton, isLoading && styles.buttonDisabled]}
+              onPress={handleLogin}
+              onPressIn={() => { btnScale.value = withSpring(0.96); }}
+              onPressOut={() => { btnScale.value = withSpring(1); }}
               disabled={isLoading}
               accessibilityRole="button"
-              accessibilityLabel="Go to Register"
-              accessibilityHint="Opens the account registration screen"
+              accessibilityLabel="Sign in"
+              accessibilityState={{ disabled: isLoading }}
             >
-              <Text style={styles.registerLinkText}>
-                Don't have an account?{' '}
-                <Text style={styles.registerLinkHighlight}>Register</Text>
-              </Text>
+              <LinearGradient
+                colors={COLORS.gradientBuy}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.loginGradient}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.loginButtonText}>Sign In</Text>
+                )}
+              </LinearGradient>
             </Pressable>
           </Animated.View>
-        </ScrollView>
+
+          {/* Biometric */}
+          {biometricAvailable && (
+            <Pressable
+              style={styles.biometricButton}
+              onPress={handleBiometric}
+              disabled={isLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in with biometrics"
+              accessibilityState={{ disabled: isLoading }}
+            >
+              <Ionicons name="finger-print" size={20} color={COLORS.text} />
+              <Text style={styles.biometricButtonText}>  Sign in with Biometrics</Text>
+            </Pressable>
+          )}
+
+          {/* Google Sign-In */}
+          <GoogleSignInButton
+            onSuccess={() => { /* store update triggers navigation automatically */ }}
+            onError={(err) => setError(err.message)}
+          />
+
+          {/* Apple Sign-In (iOS only) */}
+          <AppleSignInButton
+            onSuccess={() => { /* store update triggers navigation automatically */ }}
+            onError={(err) => setError(err.message)}
+          />
+
+          {/* Register link */}
+          <Pressable
+            style={styles.registerLink}
+            onPress={() => navigation.navigate('Register')}
+            disabled={isLoading}
+            accessibilityRole="button"
+            accessibilityLabel="Go to Register"
+          >
+            <Text style={styles.registerLinkText}>
+              Don't have an account?{' '}
+              <Text style={styles.registerLinkHighlight}>Register</Text>
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </LinearGradient>
   );
 };
@@ -296,7 +287,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: SPACING.md,
-    paddingTop: 80,
+    paddingTop: 60,
     paddingBottom: SPACING.xl,
   },
   logoContainer: {

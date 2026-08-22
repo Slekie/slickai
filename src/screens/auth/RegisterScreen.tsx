@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -12,7 +12,6 @@ import {
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withTiming,
   withSpring,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -48,17 +47,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
   const passwordRef = useRef<TextInput>(null);
   const confirmRef = useRef<TextInput>(null);
 
-  // Fade in only — no translateY to prevent shaking with keyboard
-  const formOpacity = useSharedValue(0);
+  // Only button press animation — no entrance animations that interfere with keyboard
   const btnScale = useSharedValue(1);
-
-  useEffect(() => {
-    formOpacity.value = withTiming(1, { duration: 500 });
-  }, []);
-
-  const formAnimStyle = useAnimatedStyle(() => ({
-    opacity: formOpacity.value,
-  }));
 
   const btnAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: btnScale.value }],
@@ -94,132 +84,146 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
         bounces={false}
         automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       >
-          <Animated.View style={formAnimStyle}>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join Slick AI Trading Platform</Text>
+        {/* All content in a plain View — no Animated.View wrapping inputs */}
+        <View>
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>Join Slick AI Trading Platform</Text>
 
-            {error && (
-              <View style={styles.errorBanner}>
-                <Ionicons name="alert-circle" size={16} color={COLORS.error} />
-                <Text style={styles.errorText}> {error}</Text>
-              </View>
-            )}
-
-            {/* Email */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email</Text>
-              <View style={[styles.inputWrapper, focused.email && styles.inputWrapperFocused]}>
-                <Ionicons name="mail-outline" size={18} color={focused.email ? COLORS.primary : COLORS.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="your@email.com"
-                  placeholderTextColor={COLORS.textMuted}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  editable={!isLoading}
-                  returnKeyType="next"
-                  onSubmitEditing={() => passwordRef.current?.focus()}
-                  onFocus={() => setFocused((f) => ({ ...f, email: true }))}
-                  onBlur={() => setFocused((f) => ({ ...f, email: false }))}
-                  accessibilityLabel="Email address"
-                />
-              </View>
+          {error && (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle" size={16} color={COLORS.error} />
+              <Text style={styles.errorText}> {error}</Text>
             </View>
+          )}
 
-            {/* Password */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Password</Text>
-              <View style={[styles.inputWrapper, focused.password && styles.inputWrapperFocused]}>
-                <Ionicons name="lock-closed-outline" size={18} color={focused.password ? COLORS.primary : COLORS.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  ref={passwordRef}
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="At least 8 characters"
-                  placeholderTextColor={COLORS.textMuted}
-                  secureTextEntry
-                  autoComplete="new-password"
-                  editable={!isLoading}
-                  returnKeyType="next"
-                  onSubmitEditing={() => confirmRef.current?.focus()}
-                  onFocus={() => setFocused((f) => ({ ...f, password: true }))}
-                  onBlur={() => setFocused((f) => ({ ...f, password: false }))}
-                  accessibilityLabel="Password"
-                />
-              </View>
+          {/* Email */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Email</Text>
+            <View style={[styles.inputWrapper, focused.email && styles.inputWrapperFocused]}>
+              <Ionicons
+                name="mail-outline"
+                size={18}
+                color={focused.email ? COLORS.primary : COLORS.textSecondary}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="your@email.com"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                editable={!isLoading}
+                returnKeyType="next"
+                onSubmitEditing={() => passwordRef.current?.focus()}
+                onFocus={() => setFocused((f) => ({ ...f, email: true }))}
+                onBlur={() => setFocused((f) => ({ ...f, email: false }))}
+                accessibilityLabel="Email address"
+              />
             </View>
+          </View>
 
-            {/* Confirm */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Confirm Password</Text>
-              <View style={[styles.inputWrapper, focused.confirm && styles.inputWrapperFocused]}>
-                <Ionicons name="checkmark-circle-outline" size={18} color={focused.confirm ? COLORS.primary : COLORS.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  ref={confirmRef}
-                  style={styles.input}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="Repeat your password"
-                  placeholderTextColor={COLORS.textMuted}
-                  secureTextEntry
-                  autoComplete="new-password"
-                  editable={!isLoading}
-                  returnKeyType="done"
-                  onSubmitEditing={handleRegister}
-                  onFocus={() => setFocused((f) => ({ ...f, confirm: true }))}
-                  onBlur={() => setFocused((f) => ({ ...f, confirm: false }))}
-                  accessibilityLabel="Confirm password"
-                />
-              </View>
+          {/* Password */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Password</Text>
+            <View style={[styles.inputWrapper, focused.password && styles.inputWrapperFocused]}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={18}
+                color={focused.password ? COLORS.primary : COLORS.textSecondary}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                ref={passwordRef}
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="At least 8 characters"
+                placeholderTextColor={COLORS.textMuted}
+                secureTextEntry
+                autoComplete="new-password"
+                editable={!isLoading}
+                returnKeyType="next"
+                onSubmitEditing={() => confirmRef.current?.focus()}
+                onFocus={() => setFocused((f) => ({ ...f, password: true }))}
+                onBlur={() => setFocused((f) => ({ ...f, password: false }))}
+                accessibilityLabel="Password"
+              />
             </View>
+          </View>
 
-            {/* Register button */}
-            <Animated.View style={btnAnimStyle}>
-              <Pressable
-                style={[styles.registerButton, isLoading && styles.buttonDisabled]}
-                onPress={handleRegister}
-                onPressIn={() => { btnScale.value = withSpring(0.96); }}
-                onPressOut={() => { btnScale.value = withSpring(1); }}
-                disabled={isLoading}
-                accessibilityRole="button"
-                accessibilityLabel="Create account"
-                accessibilityHint="Registers a new Slick AI account"
-                accessibilityState={{ disabled: isLoading }}
-              >
-                <LinearGradient
-                  colors={COLORS.gradientBuy}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.registerGradient}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.registerButtonText}>Create Account</Text>
-                  )}
-                </LinearGradient>
-              </Pressable>
-            </Animated.View>
+          {/* Confirm Password */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Confirm Password</Text>
+            <View style={[styles.inputWrapper, focused.confirm && styles.inputWrapperFocused]}>
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={18}
+                color={focused.confirm ? COLORS.primary : COLORS.textSecondary}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                ref={confirmRef}
+                style={styles.input}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Repeat your password"
+                placeholderTextColor={COLORS.textMuted}
+                secureTextEntry
+                autoComplete="new-password"
+                editable={!isLoading}
+                returnKeyType="done"
+                onSubmitEditing={handleRegister}
+                onFocus={() => setFocused((f) => ({ ...f, confirm: true }))}
+                onBlur={() => setFocused((f) => ({ ...f, confirm: false }))}
+                accessibilityLabel="Confirm password"
+              />
+            </View>
+          </View>
 
+          {/* Register button — press scale animation only, safe because not triggered by keyboard */}
+          <Animated.View style={btnAnimStyle}>
             <Pressable
-              style={styles.loginLink}
-              onPress={() => navigation.navigate('Login')}
+              style={[styles.registerButton, isLoading && styles.buttonDisabled]}
+              onPress={handleRegister}
+              onPressIn={() => { btnScale.value = withSpring(0.96); }}
+              onPressOut={() => { btnScale.value = withSpring(1); }}
               disabled={isLoading}
               accessibilityRole="button"
-              accessibilityLabel="Go to Sign In"
-              accessibilityHint="Opens the login screen"
+              accessibilityLabel="Create account"
+              accessibilityState={{ disabled: isLoading }}
             >
-              <Text style={styles.loginLinkText}>
-                Already have an account?{' '}
-                <Text style={styles.loginLinkHighlight}>Sign In</Text>
-              </Text>
+              <LinearGradient
+                colors={COLORS.gradientBuy}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.registerGradient}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.registerButtonText}>Create Account</Text>
+                )}
+              </LinearGradient>
             </Pressable>
           </Animated.View>
-        </ScrollView>
+
+          <Pressable
+            style={styles.loginLink}
+            onPress={() => navigation.navigate('Login')}
+            disabled={isLoading}
+            accessibilityRole="button"
+            accessibilityLabel="Go to Sign In"
+          >
+            <Text style={styles.loginLinkText}>
+              Already have an account?{' '}
+              <Text style={styles.loginLinkHighlight}>Sign In</Text>
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </LinearGradient>
   );
 };
@@ -230,7 +234,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: SPACING.md,
-    paddingTop: 80,
+    paddingTop: 60,
     paddingBottom: SPACING.xl,
   },
   title: {
@@ -239,6 +243,7 @@ const styles = StyleSheet.create({
     fontWeight: FONTS.weights.extrabold,
     textAlign: 'center',
     marginBottom: 4,
+    marginTop: 40,
   },
   subtitle: {
     color: COLORS.textSecondary,
