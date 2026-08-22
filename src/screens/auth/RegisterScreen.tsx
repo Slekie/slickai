@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -87,18 +86,14 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
 
   return (
     <LinearGradient colors={COLORS.gradientBg} style={styles.container}>
-      <KeyboardAvoidingView
+      <ScrollView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       >
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-        >
           <Animated.View style={formAnimStyle}>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>Join Slick AI Trading Platform</Text>
@@ -225,7 +220,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
             </Pressable>
           </Animated.View>
         </ScrollView>
-      </KeyboardAvoidingView>
     </LinearGradient>
   );
 };

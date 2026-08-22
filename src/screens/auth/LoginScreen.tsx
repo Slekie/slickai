@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -57,7 +56,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [focused, setFocused] = useState<FocusState>({ email: false, password: false });
 
-  // Entrance animations
+  const passwordRef = useRef<TextInput>(null);
   const logoScale = useSharedValue(0.6);
   const logoOpacity = useSharedValue(0);
   const formOpacity = useSharedValue(0);
@@ -131,18 +130,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   return (
     <LinearGradient colors={COLORS.gradientBg} style={styles.container}>
-      <KeyboardAvoidingView
+      <ScrollView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       >
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-        >
           {/* Logo */}
           <Animated.View style={[styles.logoContainer, logoAnimStyle]}>
             <LinearGradient
@@ -190,6 +185,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                   onBlur={() => setFocused((f) => ({ ...f, email: false }))}
                   accessibilityLabel="Email address"
                   returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
                 />
               </View>
             </View>
@@ -200,6 +196,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               <View style={[styles.inputWrapper, focused.password && styles.inputWrapperFocused]}>
                 <Ionicons name="lock-closed-outline" size={18} color={focused.password ? COLORS.primary : COLORS.textSecondary} style={styles.inputIcon} />
                 <TextInput
+                  ref={passwordRef}
                   style={styles.input}
                   value={password}
                   onChangeText={setPassword}
@@ -289,7 +286,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             </Pressable>
           </Animated.View>
         </ScrollView>
-      </KeyboardAvoidingView>
     </LinearGradient>
   );
 };
