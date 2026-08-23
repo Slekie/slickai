@@ -17,6 +17,28 @@ export interface RegisterResponse {
   refreshToken: string;
 }
 
+// Shape the backend actually returns (snake_case)
+interface BackendAuthResponse {
+  success: boolean;
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  // Register also returns user info at top level
+  user_id?: string;
+  email?: string;
+}
+
+function mapBackendResponse(data: BackendAuthResponse, email?: string): LoginResponse {
+  return {
+    user: {
+      userId: data.user_id ?? '',
+      email:  data.email  ?? email ?? '',
+    },
+    token:        data.access_token,
+    refreshToken: data.refresh_token,
+  };
+}
+
 export interface BiometricChallengeResponse {
   challenge: string;
 }
@@ -26,25 +48,33 @@ export const authService = {
    * Authenticate with email and password.
    */
   login: async (email: string, password: string): Promise<LoginResponse> => {
-    const response = await apiClient.post<LoginResponse>(
+    const response = await apiClient.post<BackendAuthResponse>(
       ENDPOINTS.auth.login,
       { email, password }
     );
-    return response.data;
+    return mapBackendResponse(response.data, email);
   },
 
   /**
    * Register a new user account.
+   * Backend returns 201 with user_id, email, message — no tokens.
+   * We immediately log the user in to get tokens.
    */
   register: async (
     email: string,
     password: string
   ): Promise<RegisterResponse> => {
-    const response = await apiClient.post<RegisterResponse>(
+    // Step 1: create account
+    await apiClient.post<{ success: boolean; user_id: string; email: string }>(
       ENDPOINTS.auth.register,
       { email, password }
     );
-    return response.data;
+    // Step 2: auto-login to get JWT pair
+    const loginRes = await apiClient.post<BackendAuthResponse>(
+      ENDPOINTS.auth.login,
+      { email, password }
+    );
+    return mapBackendResponse(loginRes.data, email);
   },
 
   /**
@@ -73,57 +103,51 @@ export const authService = {
 
   /**
    * Exchange a biometric credential for a JWT token.
-   * The caller must first call authenticateWithBiometrics() and obtain a signature.
    */
   loginWithBiometric: async (
     userId: string,
     signature: string
   ): Promise<LoginResponse> => {
-    const response = await apiClient.post<LoginResponse>(
+    const response = await apiClient.post<BackendAuthResponse>(
       ENDPOINTS.auth.biometric,
       { userId, signature }
     );
-    return response.data;
+    return mapBackendResponse(response.data);
   },
 
   /**
    * Authenticate with a Google ID token obtained from the OAuth flow.
-   * The caller (component) handles the OAuth prompt; this method only
-   * exchanges the resulting token with the backend.
    */
   loginWithGoogle: async (idToken: string): Promise<LoginResponse> => {
-    const response = await apiClient.post<LoginResponse>(
+    const response = await apiClient.post<BackendAuthResponse>(
       ENDPOINTS.auth.google,
       { idToken }
     );
-    return response.data;
+    return mapBackendResponse(response.data);
   },
 
   /**
    * Authenticate with an Apple identity token obtained from Sign in with Apple.
-   * The caller (component) handles the native Apple prompt; this method only
-   * exchanges the resulting credential with the backend.
-   * `email` may be null on subsequent sign-ins (Apple only provides it once).
    */
   loginWithApple: async (
     identityToken: string,
     email: string | null
   ): Promise<LoginResponse> => {
-    const response = await apiClient.post<LoginResponse>(
+    const response = await apiClient.post<BackendAuthResponse>(
       ENDPOINTS.auth.apple,
       { identityToken, email }
     );
-    return response.data;
+    return mapBackendResponse(response.data, email ?? undefined);
   },
 
   /**
    * Refresh an expired JWT token.
    */
   refreshToken: async (refreshToken: string): Promise<{ token: string }> => {
-    const response = await apiClient.post<{ token: string }>(
+    const response = await apiClient.post<{ access_token: string }>(
       ENDPOINTS.auth.refresh,
-      { refreshToken }
+      { refresh_token: refreshToken }
     );
-    return response.data;
+    return { token: response.data.access_token };
   },
 };
