@@ -1,11 +1,13 @@
 // ── API Configuration ─────────────────────────────────────────────────────────
 // Override API_BASE_URL via EAS environment variables in eas.json.
+// The fallback URL is used when running in Expo Go (dev) where eas.json
+// env vars are not injected.
 
 export const API_BASE_URL: string =
-  (process.env.EXPO_PUBLIC_API_BASE_URL as string) ?? 'https://api.slickai.com';
+  (process.env.EXPO_PUBLIC_API_BASE_URL as string) || 'https://saita-backend.onrender.com';
 
 export const WS_URL: string =
-  (process.env.EXPO_PUBLIC_WS_URL as string) ?? 'wss://api.slickai.com';
+  (process.env.EXPO_PUBLIC_WS_URL as string) || 'wss://saita-backend.onrender.com';
 
 export const API_TIMEOUT_MS = 15_000;
 

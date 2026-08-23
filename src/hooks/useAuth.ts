@@ -51,6 +51,9 @@ export function useAuth() {
         _setTokenOnServices(token);
         // Non-blocking push token registration
         void notificationService.registerPushToken(token);
+      } catch (err) {
+        // Re-throw so the screen's catch block can display the error
+        throw err;
       } finally {
         store.setLoading(false);
       }

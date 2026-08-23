@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -29,11 +30,7 @@ interface RegisterScreenProps {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 }
 
-interface FocusState {
-  email: boolean;
-  password: boolean;
-  confirm: boolean;
-}
+type ActiveField = 'email' | 'password' | 'confirm' | null;
 
 export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const { register, isLoading } = useAuth();
@@ -42,12 +39,13 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [focused, setFocused] = useState<FocusState>({ email: false, password: false, confirm: false });
+  
+  // Track focused field with a scalar value to avoid object spreads
+  const [activeInput, setActiveInput] = useState<ActiveField>(null);
 
   const passwordRef = useRef<TextInput>(null);
   const confirmRef = useRef<TextInput>(null);
 
-  // Only button press animation — no entrance animations that interfere with keyboard
   const btnScale = useSharedValue(1);
 
   const btnAnimStyle = useAnimatedStyle(() => ({
@@ -68,162 +66,189 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
     setError(null);
     if (!validateInputs()) return;
     try {
+      if (__DEV__) {
+        console.log('[Register] Attempting registration for:', email.trim().toLowerCase());
+        console.log('[Register] URL:', `${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://saita-backend.onrender.com'}/auth/register`);
+      }
       await register(email.trim().toLowerCase(), password);
+      if (__DEV__) console.log('[Register] Success — authStore should now be authenticated');
+      // If we reach here, registration succeeded — authStore.isAuthenticated
+      // will be true and RootNavigator will navigate away automatically.
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
+      if (__DEV__) console.error('[Register] Error:', err);
+      // Extract the most useful error message from the response
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { message?: string }; status?: number } };
+        const msg = axiosErr.response?.data?.message;
+        const status = axiosErr.response?.status;
+        if (msg) {
+          setError(msg);
+        } else if (status === 409) {
+          setError('An account with this email already exists.');
+        } else if (status === 0 || !status) {
+          setError('Cannot reach the server. Check your internet connection.');
+        } else {
+          setError(`Registration failed (${status}). Please try again.`);
+        }
+      } else {
+        setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
+      }
     }
   }, [email, password, confirmPassword, register]);
 
   return (
     <LinearGradient colors={COLORS.gradientBg} style={styles.container}>
-      <ScrollView
+      <KeyboardAvoidingView
         style={styles.flex}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* All content in a plain View — no Animated.View wrapping inputs */}
-        <View>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join Slick AI Trading Platform</Text>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          <View>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Join Slick AI Trading Platform</Text>
 
-          {error && (
-            <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle" size={16} color={COLORS.error} />
-              <Text style={styles.errorText}> {error}</Text>
+            {error && (
+              <View style={styles.errorBanner}>
+                <Ionicons name="alert-circle" size={16} color={COLORS.error} />
+                <Text style={styles.errorText}> {error}</Text>
+              </View>
+            )}
+
+            {/* Email */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Email</Text>
+              <View style={[styles.inputWrapper, activeInput === 'email' && styles.inputWrapperFocused]}>
+                <Ionicons
+                  name="mail-outline"
+                  size={18}
+                  color={activeInput === 'email' ? COLORS.primary : COLORS.textSecondary}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="your@email.com"
+                  placeholderTextColor={COLORS.textMuted}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  editable={!isLoading}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  onFocus={() => setActiveInput('email')}
+                  onBlur={() => setActiveInput(null)}
+                  accessibilityLabel="Email address"
+                />
+              </View>
             </View>
-          )}
 
-          {/* Email */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email</Text>
-            <View style={[styles.inputWrapper, focused.email && styles.inputWrapperFocused]}>
-              <Ionicons
-                name="mail-outline"
-                size={18}
-                color={focused.email ? COLORS.primary : COLORS.textSecondary}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="your@email.com"
-                placeholderTextColor={COLORS.textMuted}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                editable={!isLoading}
-                returnKeyType="next"
-                onSubmitEditing={() => passwordRef.current?.focus()}
-                onFocus={() => setFocused((f) => ({ ...f, email: true }))}
-                onBlur={() => setFocused((f) => ({ ...f, email: false }))}
-                accessibilityLabel="Email address"
-              />
+            {/* Password */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Password</Text>
+              <View style={[styles.inputWrapper, activeInput === 'password' && styles.inputWrapperFocused]}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={18}
+                  color={activeInput === 'password' ? COLORS.primary : COLORS.textSecondary}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  ref={passwordRef}
+                  style={styles.input}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="At least 8 characters"
+                  placeholderTextColor={COLORS.textMuted}
+                  secureTextEntry
+                  autoComplete="new-password"
+                  editable={!isLoading}
+                  returnKeyType="next"
+                  onSubmitEditing={() => confirmRef.current?.focus()}
+                  onFocus={() => setActiveInput('password')}
+                  onBlur={() => setActiveInput(null)}
+                  accessibilityLabel="Password"
+                />
+              </View>
             </View>
-          </View>
 
-          {/* Password */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Password</Text>
-            <View style={[styles.inputWrapper, focused.password && styles.inputWrapperFocused]}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={18}
-                color={focused.password ? COLORS.primary : COLORS.textSecondary}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                ref={passwordRef}
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="At least 8 characters"
-                placeholderTextColor={COLORS.textMuted}
-                secureTextEntry
-                autoComplete="new-password"
-                editable={!isLoading}
-                returnKeyType="next"
-                onSubmitEditing={() => confirmRef.current?.focus()}
-                onFocus={() => setFocused((f) => ({ ...f, password: true }))}
-                onBlur={() => setFocused((f) => ({ ...f, password: false }))}
-                accessibilityLabel="Password"
-              />
+            {/* Confirm Password */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Confirm Password</Text>
+              <View style={[styles.inputWrapper, activeInput === 'confirm' && styles.inputWrapperFocused]}>
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={18}
+                  color={activeInput === 'confirm' ? COLORS.primary : COLORS.textSecondary}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  ref={confirmRef}
+                  style={styles.input}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Repeat your password"
+                  placeholderTextColor={COLORS.textMuted}
+                  secureTextEntry
+                  autoComplete="new-password"
+                  editable={!isLoading}
+                  returnKeyType="done"
+                  onSubmitEditing={handleRegister}
+                  onFocus={() => setActiveInput('confirm')}
+                  onBlur={() => setActiveInput(null)}
+                  accessibilityLabel="Confirm password"
+                />
+              </View>
             </View>
-          </View>
 
-          {/* Confirm Password */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Confirm Password</Text>
-            <View style={[styles.inputWrapper, focused.confirm && styles.inputWrapperFocused]}>
-              <Ionicons
-                name="checkmark-circle-outline"
-                size={18}
-                color={focused.confirm ? COLORS.primary : COLORS.textSecondary}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                ref={confirmRef}
-                style={styles.input}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="Repeat your password"
-                placeholderTextColor={COLORS.textMuted}
-                secureTextEntry
-                autoComplete="new-password"
-                editable={!isLoading}
-                returnKeyType="done"
-                onSubmitEditing={handleRegister}
-                onFocus={() => setFocused((f) => ({ ...f, confirm: true }))}
-                onBlur={() => setFocused((f) => ({ ...f, confirm: false }))}
-                accessibilityLabel="Confirm password"
-              />
-            </View>
-          </View>
+            {/* Register button */}
+            <Animated.View style={btnAnimStyle}>
+              <Pressable
+                style={[styles.registerButton, isLoading && styles.buttonDisabled]}
+                onPress={handleRegister}
+                onPressIn={() => { btnScale.value = withSpring(0.96); }}
+                onPressOut={() => { btnScale.value = withSpring(1); }}
+                disabled={isLoading}
+                accessibilityRole="button"
+                accessibilityLabel="Create account"
+                accessibilityState={{ disabled: isLoading }}
+              >
+                <LinearGradient
+                  colors={COLORS.gradientBuy}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.registerGradient}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.registerButtonText}>Create Account</Text>
+                  )}
+                </LinearGradient>
+              </Pressable>
+            </Animated.View>
 
-          {/* Register button — press scale animation only, safe because not triggered by keyboard */}
-          <Animated.View style={btnAnimStyle}>
             <Pressable
-              style={[styles.registerButton, isLoading && styles.buttonDisabled]}
-              onPress={handleRegister}
-              onPressIn={() => { btnScale.value = withSpring(0.96); }}
-              onPressOut={() => { btnScale.value = withSpring(1); }}
+              style={styles.loginLink}
+              onPress={() => navigation.navigate('Login')}
               disabled={isLoading}
               accessibilityRole="button"
-              accessibilityLabel="Create account"
-              accessibilityState={{ disabled: isLoading }}
+              accessibilityLabel="Go to Sign In"
             >
-              <LinearGradient
-                colors={COLORS.gradientBuy}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.registerGradient}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.registerButtonText}>Create Account</Text>
-                )}
-              </LinearGradient>
+              <Text style={styles.loginLinkText}>
+                Already have an account?{' '}
+                <Text style={styles.loginLinkHighlight}>Sign In</Text>
+              </Text>
             </Pressable>
-          </Animated.View>
-
-          <Pressable
-            style={styles.loginLink}
-            onPress={() => navigation.navigate('Login')}
-            disabled={isLoading}
-            accessibilityRole="button"
-            accessibilityLabel="Go to Sign In"
-          >
-            <Text style={styles.loginLinkText}>
-              Already have an account?{' '}
-              <Text style={styles.loginLinkHighlight}>Sign In</Text>
-            </Text>
-          </Pressable>
-        </View>
-      </ScrollView>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 };
@@ -236,6 +261,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingTop: 60,
     paddingBottom: SPACING.xl,
+    justifyContent: 'center',
   },
   title: {
     color: COLORS.text,
@@ -243,7 +269,6 @@ const styles = StyleSheet.create({
     fontWeight: FONTS.weights.extrabold,
     textAlign: 'center',
     marginBottom: 4,
-    marginTop: 40,
   },
   subtitle: {
     color: COLORS.textSecondary,
@@ -281,15 +306,11 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.border,
-    minHeight: 52,
+    height: 52,
   },
+  // Clean border-only highlight to eliminate shadow/elevation rendering feedback loops
   inputWrapperFocused: {
     borderColor: COLORS.primary,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4,
   },
   inputIcon: {
     paddingLeft: 14,
@@ -301,8 +322,7 @@ const styles = StyleSheet.create({
     fontSize: FONTS.sizes.md,
     paddingHorizontal: 12,
     paddingVertical: 0,
-    height: 52,
-    textAlignVertical: 'center',
+    height: '100%',
   },
   registerButton: {
     borderRadius: RADIUS.md,
