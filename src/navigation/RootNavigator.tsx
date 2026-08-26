@@ -140,7 +140,7 @@ const AppContent: React.FC = () => {
       <MainTabNavigator />
       <NetworkBanner />
     </ErrorBoundary>
-  ) : <PaywallScreen />;
+  ) : <PaywallScreen onSkip={() => setDevBypassPaywall(true)} />;
 };
 
 // ── Root navigator ────────────────────────────────────────────────────────────
@@ -235,3 +235,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
+

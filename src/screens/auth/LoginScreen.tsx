@@ -17,6 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { authService } from '../../services/authService';
@@ -47,6 +48,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     lockoutRemainingMs,
     failedAttempts,
   } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [email, setEmail]               = useState('');
   const [password, setPassword]         = useState('');
@@ -145,7 +147,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       >
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top + 24, 60) }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           bounces={false}
@@ -333,7 +335,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: SPACING.md,
-    paddingTop: 60,
+    paddingTop: 60,  // baseline ? overridden at render time with safe-area inset
     paddingBottom: SPACING.xl,
     justifyContent: 'center',
   },
