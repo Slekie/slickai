@@ -2,418 +2,530 @@
 
 ## Introduction
 
-Slick AI is an AI-powered trading companion mobile application targeting retail forex traders on Android and iOS. The app connects to live broker accounts (Deriv, MetaTrader 5, Oanda), receives real-time AI-generated trading signals from a backend deep-learning service, and can execute trades autonomously on the user's behalf. Users must subscribe to a paid plan before live trading features are unlocked. The app is built with Expo ~54, React Native, and TypeScript.
+Slick AI is an AI-powered forex trading mobile application for Android and iOS built with Expo
+~54 and React Native 0.81. The app connects users to their live broker accounts, delivers
+real-time AI-generated trading signals, and can execute trades autonomously on their behalf.
+A subscription paywall gates live trading features, and all behaviour must be secure, legally
+sound, and architecturally compliant with the 13 software engineering principles listed below.
 
-**Build Status:** Phases 0–6 are complete (foundation, stores, services, hooks, components, navigation, and all screens). The requirements below cover both what exists and what must still be built, with clear markers. The remaining work spans Phases 7–11: OAuth/Apple sign-in, subscription paywall, WebSocket hardening, push notification wiring, UX polish, test coverage, and CI/CD pipeline.
+The existing codebase (Phases 0–6) covers foundation, state, services, hooks, core components,
+navigation, and primary screens. These requirements address both what is built and what must be
+completed or hardened — covering the full product end-to-end for verification and task generation.
 
 ---
 
 ## Glossary
 
-- **App**: The Slick AI React Native / Expo mobile application.
-- **Backend**: The remote server that generates AI trading signals and executes trades via broker APIs.
-- **Broker**: A supported live trading platform — Deriv, MetaTrader 5 (MT5), or Oanda.
-- **Connected_Account**: A broker trading account that a user has linked to the App.
-- **Signal**: An AI-generated trade recommendation (asset, direction, entry price, SL, TP, confidence).
-- **Open_Position**: A live trade currently running on a Connected_Account.
-- **Closed_Trade**: A completed trade with a recorded outcome (P&L, close reason).
-- **Performance_Summary**: Aggregated statistics for a chosen period — total P&L, win rate, trade count, open position count.
-- **Equity_Curve**: A time-series dataset of account equity snapshots used to render a line chart.
-- **Subscription_Plan**: A recurring billing plan (Monthly, Quarterly, Yearly) required before live trading.
-- **Paywall**: The screen that blocks access to live trading features until a valid Subscription_Plan is active.
-- **Signal_Delivery_Mode**: An account mode where the AI sends signals but the user executes trades manually.
-- **Automated_Trading_Mode**: An account mode where the AI executes trades autonomously on the user's account.
-- **RootNavigator**: The top-level React Navigation component that orchestrates splash → onboarding → auth → app flow.
-- **AuthNavigator**: The stack navigator containing LoginScreen and RegisterScreen.
-- **MainTabNavigator**: The bottom-tab navigator with five tabs: Dashboard, Signals, History, Accounts, Settings.
-- **WebSocket**: The persistent Socket.IO connection between the App and Backend for real-time data.
-- **JWT**: JSON Web Token used for authenticated API requests; stored in SecureStore.
-- **SecureStore**: `expo-secure-store` encrypted on-device key-value storage.
-- **PAT**: Personal Access Token used to authenticate a Deriv broker account.
-- **EAS**: Expo Application Services — the build and deployment platform for the App.
-- **OTA**: Over-the-air update delivered via Expo Updates without a new store submission.
-- **CI/CD**: Continuous integration and continuous delivery pipeline running on GitHub Actions.
-- **Lockout**: A temporary login block after 3 consecutive failed authentication attempts (15-minute duration).
-- **Circuit_Breaker**: An account status indicating the Backend has paused automated trading due to risk limits.
+- **App**: The Slick AI React Native mobile application.
+- **Auth_Service**: The module responsible for authentication API calls and biometric prompts (`src/services/authService.ts`).
+- **Auth_Store**: The Zustand store that holds authentication state and SecureStore persistence (`src/store/authStore.ts`).
+- **WelcomeScreen**: The first screen shown to a new or logged-out user, containing the "Get Started" call-to-action.
+- **OnboardingScreen**: Three-slide carousel shown exactly once after first launch, before the Auth flow.
+- **LoginScreen**: Screen where returning users sign in via email/password, Google, Apple, or biometrics.
+- **RegisterScreen**: Screen where new users create an account via email/password.
+- **PaywallScreen**: Subscription purchase screen shown after authentication when no active entitlement exists.
+- **DashboardScreen**: The primary post-login screen showing performance summary, equity curve, and open positions.
+- **SignalsScreen**: Screen displaying real-time AI-generated trading signals.
+- **TradeHistoryScreen**: Screen showing closed trade history with performance statistics.
+- **AccountsScreen**: Screen for connecting, viewing, and disconnecting broker accounts.
+- **SettingsScreen**: Screen for managing preferences, subscription mode, and account actions.
+- **RootNavigator**: Top-level navigation controller that gates screens by auth and subscription state.
+- **MainTabNavigator**: Bottom-tab navigator rendered after subscription is confirmed.
+- **Auth_Navigator**: Stack navigator containing LoginScreen and RegisterScreen.
+- **WebSocket_Service**: The Socket.IO client wrapper (`src/services/websocketService.ts`).
+- **Subscription_Service**: The RevenueCat SDK wrapper (`src/services/subscriptionService.ts`).
+- **Subscription_Store**: The Zustand store that holds subscription entitlement state (`src/store/subscriptionStore.ts`).
+- **Notification_Service**: The expo-notifications wrapper (`src/services/notificationService.ts`).
+- **API_Client**: The Axios instance with interceptors (`src/services/apiClient.ts`).
+- **Broker**: A forex trading provider (Deriv, MetaTrader 5, or Oanda) whose account a user connects.
+- **Signal**: An AI-generated trading recommendation containing asset, direction, entry price, SL, TP, and confidence score.
+- **Open_Position**: A currently active trade that has been placed in the market.
+- **Closed_Trade**: A completed trade with an exit price, P&L, and close reason.
+- **JWT**: A JSON Web Token used for authenticating API requests.
+- **Refresh_Token**: A long-lived token used to obtain a new JWT without re-authentication.
+- **SecureStore**: The `expo-secure-store` module used for encrypted on-device key/value storage.
+- **RevenueCat**: The third-party subscription management platform (`react-native-purchases` SDK).
+- **Entitlement**: A RevenueCat concept representing the "pro" subscription access right.
+- **CI_CD**: The GitHub Actions continuous integration and delivery pipeline (`.github/workflows/android-build.yml`).
+- **EAS**: Expo Application Services — the build and submission platform.
+- **EARS**: Easy Approach to Requirements Syntax — the pattern system used for all requirements herein.
+
+---
+
+## Architectural Principles
+
+All requirements and their implementations must comply with the following 13 software engineering
+architecture principles:
+
+1. **Single Responsibility** — Each module, component, or service has exactly one reason to change.
+2. **Open/Closed** — Modules are open for extension (new brokers, new screens) but closed for modification.
+3. **Liskov Substitution** — Derived types (e.g., screen props) are substitutable without altering correctness.
+4. **Interface Segregation** — No consumer depends on methods it does not use.
+5. **Dependency Inversion** — High-level modules (screens) depend on abstractions (service interfaces, stores), not concretions.
+6. **Separation of Concerns** — UI, state, network, and business logic are kept in separate layers.
+7. **DRY (Don't Repeat Yourself)** — Common logic is extracted into shared hooks, helpers, or services.
+8. **YAGNI (You Aren't Gonna Need It)** — Only features explicitly required here are implemented.
+9. **Fail Fast** — Errors are detected as early as possible (validation, type guards, interceptors).
+10. **Defence in Depth** — Multiple independent security layers protect sensitive operations.
+11. **Least Privilege** — Each module requests only the permissions it needs; tokens are scoped minimally.
+12. **Observability** — Errors, state transitions, and key events are logged in development (`__DEV__` guards) without leaking PII.
+13. **Testability** — All logic with conditional branches is written in a form that supports unit and property-based testing without network or native dependencies.
 
 ---
 
 ## Requirements
 
-### Requirement 1: App Entry Point and Navigation Wiring
+---
 
-**User Story:** As a developer, I want the App entry point wired to the full navigation graph, so that users reach onboarding, authentication, and the trading dashboard through a single consistent flow.
+### Requirement 1: Application Launch and Splash Screen
 
-> **Current State:** `App.tsx` contains a minimal stack navigating only between `WelcomeScreen` and `GetStartedScreen`. `RootNavigator` (splash → onboarding → auth/app) is fully implemented in `src/navigation/RootNavigator.tsx` but is not yet used by `App.tsx`.
+**User Story:** As a user, I want to see a branded splash screen when the App starts, so that I have a smooth and professional first impression while the App initialises.
 
 #### Acceptance Criteria
 
-1. THE App SHALL render `GestureHandlerRootView` as the outermost component wrapping the entire navigation tree.
-2. THE App SHALL mount `RootNavigator` as its sole child inside `GestureHandlerRootView`.
-3. WHEN the App first launches, THE RootNavigator SHALL display an animated splash screen for a minimum of 1800 milliseconds before transitioning to the next route.
-4. WHEN a user has never completed onboarding, THE RootNavigator SHALL navigate to `OnboardingScreen` after the splash screen.
-5. WHEN a user has completed onboarding and holds a valid stored JWT, THE RootNavigator SHALL navigate directly to `MainTabNavigator` after the splash screen.
-6. WHEN a user has completed onboarding and holds no valid stored JWT, THE RootNavigator SHALL navigate to `AuthNavigator` after the splash screen.
-7. THE RootNavigator SHALL call `loadStoredAuth()` and `notificationService.initialize()` in parallel during the splash phase so that neither delay is stacked.
+1. WHEN the App is launched, THE RootNavigator SHALL display the SplashScreen for a minimum of 1800 milliseconds before transitioning to any other screen.
+2. WHEN the SplashScreen is displayed, THE SplashScreen SHALL animate the logo from a scale of 0.5 to 1.0 over 700 milliseconds using a spring easing.
+3. WHEN the SplashScreen logo animation begins, THE SplashScreen SHALL fade in the app title and subtitle text from opacity 0.0 to opacity 1.0 after a 400-millisecond delay over 500 milliseconds.
+4. WHILE the App is loading stored authentication state from SecureStore, THE RootNavigator SHALL continue displaying the SplashScreen until both the minimum display duration and the async load have completed.
+5. IF the stored authentication state cannot be read from SecureStore, THEN THE Auth_Store SHALL treat the user as unauthenticated.
+6. IF the stored authentication state cannot be read from SecureStore AND the onboarding completion flag `slickai_onboarding_done` does not exist, THEN THE RootNavigator SHALL navigate to the OnboardingScreen; IF the flag exists, THEN THE RootNavigator SHALL navigate to the WelcomeScreen.
 
 ---
 
-### Requirement 2: Welcome Screen and Onboarding
+### Requirement 2: Onboarding Flow
 
-**User Story:** As a first-time user, I want a beautiful animated welcome experience followed by swipeable onboarding slides, so that I understand the app's value before creating an account.
-
-> **Current State:** `WelcomeScreen` and `GetStartedScreen` exist in `/screens` (not yet wired to RootNavigator). `OnboardingScreen` with three slides is complete in `src/screens/onboarding/OnboardingScreen.tsx`.
+**User Story:** As a first-time user, I want to see an engaging onboarding carousel, so that I understand the App's value before I sign in.
 
 #### Acceptance Criteria
 
-1. THE App SHALL display a full-screen welcome view with the Slick AI logo, a tagline, and animated entrance transitions powered by Reanimated 3 before the user reaches the onboarding slides.
-2. WHEN a user taps "Get Started" on the welcome view, THE App SHALL navigate to the first onboarding slide.
-3. THE OnboardingScreen SHALL present exactly three swipeable slides with the titles "AI-Powered Trading", "Connect Your Broker", and "Choose Your Mode".
-4. WHEN a user swipes or taps "Next", THE OnboardingScreen SHALL animate a parallax opacity and vertical translate transition between slides using a `scrollX` SharedValue.
-5. THE OnboardingScreen SHALL display a dot pagination indicator where the active dot expands from 8 px to 24 px width.
-6. WHEN a user is not on the last slide, THE OnboardingScreen SHALL display a "Skip" button that completes onboarding immediately.
-7. WHEN a user reaches the last slide, THE OnboardingScreen SHALL display a "Get Started" button instead of "Next".
-8. WHEN onboarding completes (via Skip or Get Started), THE App SHALL persist a completion flag to SecureStore under the key `slickai_onboarding_done`.
-9. WHEN `slickai_onboarding_done` is set to `"true"`, THE OnboardingScreen SHALL never be shown again on subsequent launches.
+1. WHEN the App is launched for the first time and no onboarding completion flag exists in SecureStore, THE RootNavigator SHALL display the OnboardingScreen before the Auth_Navigator.
+2. THE OnboardingScreen SHALL present exactly three slides in the order: "AI-Powered Trading", "Connect Your Broker", "Choose Your Mode".
+3. WHEN the user scrolls between OnboardingScreen slides, THE OnboardingScreen SHALL animate each slide's opacity and vertical translation using a `scrollX` SharedValue driven by the FlatList scroll position.
+4. WHEN the user reaches the third slide, THE OnboardingScreen SHALL replace the "Next" button with a "Get Started" button.
+5. WHEN the user taps "Get Started" or "Skip", THE OnboardingScreen SHALL write the completion flag `slickai_onboarding_done` to SecureStore.
+6. WHEN the flag `slickai_onboarding_done` has been successfully written, THE RootNavigator SHALL navigate to the Auth_Navigator.
+7. IF writing the completion flag `slickai_onboarding_done` to SecureStore fails, THEN THE RootNavigator SHALL still navigate to the Auth_Navigator and SHALL retry writing the flag on the next App launch.
+8. WHEN the App is launched on subsequent sessions and the completion flag exists in SecureStore, THE RootNavigator SHALL skip the OnboardingScreen.
+9. THE OnboardingScreen SHALL display a dot pagination indicator where the active dot width expands from 8 pixels to 24 pixels using a spring animation with a damping value no lower than 10, and inactive dots SHALL be 8 pixels wide.
 
 ---
 
-### Requirement 3: Email and Password Authentication
+### Requirement 3: Welcome Screen
 
-**User Story:** As a user, I want to register and log in with an email address and password, so that I can securely access my trading account.
-
-> **Current State:** `LoginScreen` and `RegisterScreen` are fully implemented with email/password forms, Reanimated entrance animations, input focus rings, biometric support, and lockout logic. The `authStore`, `authService`, and `useAuth` hook are complete.
+**User Story:** As a returning or new user who has completed onboarding, I want to see a welcoming entry screen with clear options to sign in or register, so that I can quickly access the App.
 
 #### Acceptance Criteria
 
-1. WHEN a user submits the registration form, THE App SHALL validate that the email field matches the pattern `[^\s@]+@[^\s@]+\.[^\s@]+` before sending to the Backend.
-2. WHEN a user submits the registration form, THE App SHALL validate that the password is at least 8 characters long.
-3. WHEN a user submits the registration form, THE App SHALL validate that the password and confirm-password fields match.
-4. IF the registration form contains invalid input, THEN THE App SHALL display an inline error message identifying the specific field that failed validation.
-5. WHEN registration succeeds, THE App SHALL store the returned JWT and refresh token in SecureStore and navigate to `MainTabNavigator`.
-6. WHEN a user submits the login form with valid credentials, THE App SHALL store the returned JWT in SecureStore and navigate to `MainTabNavigator`.
-7. WHEN a login attempt fails, THE App SHALL increment a failed-attempt counter and display the current count to the user after the first failure.
-8. WHEN a user accumulates 3 consecutive failed login attempts, THE App SHALL activate a Lockout for 15 minutes and display a lockout screen with the remaining wait time.
-9. WHILE a Lockout is active, THE App SHALL prevent any further login attempts and display a countdown message.
-10. WHEN the App starts, THE App SHALL call `loadStoredAuth()` to restore a previously stored JWT session without requiring the user to log in again.
-11. THE LoginScreen SHALL display an animated entrance: logo scales from 0.6× to 1× over 600 ms; the form fades in and slides up after a 400 ms delay.
+1. WHEN the user has completed onboarding and is not authenticated, THE RootNavigator SHALL display a WelcomeScreen as the initial screen of the Auth_Navigator.
+2. THE WelcomeScreen SHALL display the Slick AI logo, app name, a tagline describing the AI trading platform, a "Sign In" button, and a "Create Account" button.
+3. WHEN the user taps "Sign In", THE Auth_Navigator SHALL navigate to the LoginScreen.
+4. WHEN the user taps "Create Account", THE Auth_Navigator SHALL navigate to the RegisterScreen.
+5. WHEN the WelcomeScreen appears, THE WelcomeScreen SHALL animate each content element in sequence with a fade-in and upward slide of no more than 20dp per element, with a stagger interval of 100ms between elements and a total animation duration not exceeding 800ms, using Reanimated.
+6. IF the Auth_Navigator fails to navigate to the LoginScreen or RegisterScreen within 3 seconds of the corresponding button tap, THEN THE Auth_Navigator SHALL remain on the WelcomeScreen and display an error message indicating that navigation failed.
+7. WHEN the user has completed onboarding and is not authenticated, THE RootNavigator SHALL display the WelcomeScreen within 1 second of the authentication state being resolved.
 
 ---
 
-### Requirement 4: Biometric Authentication
+### Requirement 4: Email and Password Authentication
 
-**User Story:** As a returning user, I want to sign in using Face ID or fingerprint, so that I can access the app quickly without typing my password.
-
-> **Current State:** Biometric support is implemented in `authService.ts` via `expo-local-authentication` and is surfaced in `LoginScreen`.
+**User Story:** As a user, I want to sign in or register with my email and password, so that I have a private, persistent account on the platform.
 
 #### Acceptance Criteria
 
-1. WHEN the LoginScreen loads, THE App SHALL call `authService.isBiometricAvailable()` to determine whether biometric hardware and enrolled credentials are present.
-2. WHERE biometric authentication is available, THE LoginScreen SHALL display a "Sign in with Biometrics" button below the primary login button.
-3. WHEN a user taps the biometric button, THE App SHALL prompt the OS biometric dialog.
-4. WHEN biometric authentication succeeds, THE App SHALL authenticate the user and navigate to `MainTabNavigator`.
-5. IF biometric authentication fails or is cancelled, THEN THE App SHALL display an error message and allow the user to sign in with email and password instead.
+1. WHEN the user submits the LoginScreen form with a valid email and password, THE Auth_Service SHALL send a POST request to `/auth/login` and THE Auth_Store SHALL store the returned JWT and Refresh_Token in SecureStore.
+2. WHEN the LoginScreen email field loses focus and the value is not a valid email format, THE LoginScreen SHALL display an inline validation error message below the email field indicating the value is not a valid email address.
+3. WHEN the user submits the RegisterScreen form, THE RegisterScreen SHALL validate that the email matches the format `local@domain.tld`, the password is at least 8 characters and at most 128 characters, and the confirm-password field value is identical to the password field value before calling the Auth_Service.
+4. WHEN the RegisterScreen form fails validation on submit, THE RegisterScreen SHALL display an inline error message below each invalid field and SHALL NOT call the Auth_Service.
+5. WHEN the user submits the RegisterScreen form with valid inputs, THE Auth_Service SHALL send a POST request to `/auth/register` and THE Auth_Store SHALL store the returned JWT and Refresh_Token in SecureStore.
+6. WHEN an authentication API call returns an HTTP 401 response, THE LoginScreen SHALL display an error message indicating the credentials are invalid and THE Auth_Store SHALL increment the failed-attempt counter by 1.
+7. WHEN the failed-attempt counter reaches 3 within a session, THE Auth_Store SHALL record a lockout timestamp 15 minutes in the future and THE LoginScreen SHALL replace the login form with a lockout screen displaying the remaining lockout duration in whole seconds.
+8. WHILE the Auth_Store lockout timestamp is set and has not expired, THE LoginScreen SHALL display the lockout screen and SHALL NOT submit any API requests.
+9. WHEN the lockout timer expires, THE Auth_Store SHALL clear the lockout timestamp and failed-attempt counter and THE LoginScreen SHALL replace the lockout screen with the login form.
+10. IF an authentication API call fails due to a network error or no HTTP status code, THEN THE LoginScreen and RegisterScreen SHALL display an error message indicating the server cannot be reached and prompting the user to check their internet connection.
+11. WHILE an authentication API call is in progress, THE LoginScreen and RegisterScreen SHALL display an `ActivityIndicator` in place of the submit button and SHALL disable all form input fields.
+12. IF the Auth_Service POST request to `/auth/register` returns an HTTP 409 response, THEN THE RegisterScreen SHALL display an error message below the email field indicating an account with that email already exists and SHALL NOT store any tokens.
 
 ---
 
-### Requirement 5: Google OAuth Authentication
+### Requirement 5: Social Authentication (Google and Apple)
 
-**User Story:** As a user, I want to sign in with my Google account, so that I can onboard quickly without creating a new password.
-
-> **Current State:** Not yet built. This is a remaining Phase 7+ item.
+**User Story:** As a user, I want to sign in with my Google or Apple account, so that I can authenticate without managing a separate password.
 
 #### Acceptance Criteria
 
-1. THE LoginScreen SHALL display a "Continue with Google" button styled with the Google brand colours and logo.
-2. WHEN a user taps "Continue with Google", THE App SHALL initiate the OAuth 2.0 authorisation flow using `expo-auth-session` with a native browser session.
-3. WHEN Google authorisation succeeds, THE App SHALL send the OAuth ID token to the Backend endpoint `POST /auth/google` and receive a JWT in return.
-4. WHEN the Backend returns a JWT following Google sign-in, THE App SHALL store it in SecureStore and navigate to `MainTabNavigator`.
-5. IF the Google OAuth flow is cancelled or fails, THEN THE App SHALL dismiss the browser and display an error message on the LoginScreen without crashing.
-6. WHERE a Google account has no corresponding Slick AI account, THE Backend SHALL create one automatically so the user is never shown a separate registration form after OAuth.
+1. WHEN the user taps the "Sign in with Google" button on the LoginScreen, THE App SHALL initiate the Google OAuth 2.0 PKCE flow using `expo-auth-session` and retrieve an ID token.
+2. WHEN the Google ID token is obtained, THE Auth_Service SHALL send the token to `/auth/google`.
+3. WHEN the `/auth/google` endpoint returns a success response, THE Auth_Store SHALL store the returned JWT and Refresh_Token in SecureStore and THE RootNavigator SHALL navigate to the authenticated flow.
+4. IF the Google sign-in flow is cancelled by the user, THEN THE LoginScreen SHALL return to its default state without displaying an error.
+5. IF the Google sign-in API call returns an error, THEN THE LoginScreen SHALL display a user-safe error message of no more than 200 characters or "Google sign-in failed. Please try again." if no server message is available.
+6. WHERE the device is running iOS 13 or later, THE LoginScreen SHALL display a "Sign in with Apple" button.
+7. WHEN the user taps "Sign in with Apple", THE App SHALL initiate the Apple Sign-In flow using `expo-apple-authentication` and retrieve an identity token.
+8. WHEN the Apple identity token is obtained, THE Auth_Service SHALL send the token to `/auth/apple`.
+9. WHEN the `/auth/apple` endpoint returns a success response, THE Auth_Store SHALL store the returned JWT and Refresh_Token in SecureStore and THE RootNavigator SHALL navigate to the authenticated flow.
+10. IF the Apple sign-in flow is cancelled by the user, THEN THE LoginScreen SHALL return to its default state without displaying an error.
+11. IF the Apple sign-in API call returns an error, THEN THE LoginScreen SHALL display a user-safe error message of no more than 200 characters or "Apple sign-in failed. Please try again." if no server message is available.
 
 ---
 
-### Requirement 6: Apple Sign-In
+### Requirement 6: Biometric Authentication
 
-**User Story:** As an iOS user, I want to sign in with Apple, so that I can authenticate using the privacy-preserving method required for apps distributed on the Apple App Store.
-
-> **Current State:** Not yet built. Required by Apple App Store review guidelines when social login is offered.
+**User Story:** As a returning user, I want to sign in with Face ID or my fingerprint, so that I can access the App quickly without typing my password.
 
 #### Acceptance Criteria
 
-1. WHERE the App is running on iOS, THE LoginScreen SHALL display a "Sign in with Apple" button that meets Apple Human Interface Guidelines (black background, white Apple logo, white text).
-2. WHEN a user taps "Sign in with Apple", THE App SHALL initiate the Apple Sign-In request using `expo-apple-authentication`.
-3. WHEN Apple Sign-In succeeds, THE App SHALL send the Apple identity token to the Backend endpoint `POST /auth/apple` and receive a JWT in return.
-4. WHEN the Backend returns a JWT following Apple sign-in, THE App SHALL store it in SecureStore and navigate to `MainTabNavigator`.
-5. IF the Apple Sign-In flow is cancelled or fails, THEN THE App SHALL dismiss the prompt and display an error message on the LoginScreen without crashing.
-6. WHERE a user chooses to hide their email from Apple Sign-In, THE App SHALL use the relay email address provided by Apple for all subsequent communication.
-7. THE App SHALL NOT display the "Sign in with Apple" button on Android, as it is not supported.
+1. WHEN the LoginScreen mounts, THE Auth_Service SHALL check whether biometric hardware is enrolled using `expo-local-authentication` and store the result.
+2. WHILE biometric authentication is available AND a non-expired JWT exists in SecureStore, THE LoginScreen SHALL display a "Sign in with Biometrics" button.
+3. IF biometric authentication hardware is not enrolled or unavailable, THEN THE LoginScreen SHALL not display the "Sign in with Biometrics" button.
+4. WHEN the user taps the biometric button, THE Auth_Service SHALL prompt the system biometric dialog.
+5. WHEN the biometric prompt returns a successful result, THE Auth_Store SHALL restore the existing token for the current session and THE RootNavigator SHALL navigate to the authenticated flow.
+6. IF the biometric prompt is dismissed by the user, THEN THE LoginScreen SHALL return to its default state without displaying an error message and without incrementing the failed-attempt counter.
+7. IF the biometric prompt fails due to an authentication error, THEN THE LoginScreen SHALL display "Biometric authentication failed" without incrementing the failed-attempt counter.
 
 ---
 
-### Requirement 7: Subscription Plans and Paywall
+### Requirement 7: Session Persistence and JWT Token Refresh
 
-**User Story:** As a product owner, I want users to purchase a subscription before accessing live trading features, so that the service is monetised and sustainable.
-
-> **Current State:** Not yet built. The subscription flow, plan selection screen, and paywall gate are all missing.
+**User Story:** As a user, I want to remain logged in between app launches, and I want my session to be automatically renewed, so that I am not unexpectedly logged out.
 
 #### Acceptance Criteria
 
-1. THE App SHALL offer exactly three Subscription_Plans: Monthly, Quarterly, and Yearly, with clearly displayed pricing for each.
-2. WHEN a user first authenticates and holds no active Subscription_Plan, THE App SHALL navigate to a Paywall screen before granting access to `MainTabNavigator`.
-3. THE Paywall screen SHALL present all three Subscription_Plan options with their billing period, price, and any savings percentage compared to the Monthly plan.
-4. THE Paywall screen SHALL highlight the Quarterly or Yearly plan as the recommended option.
-5. WHEN a user selects a plan and taps "Subscribe", THE App SHALL initiate the in-app purchase flow using `expo-in-app-purchases` (iOS App Store / Google Play Billing).
-6. WHEN the in-app purchase is confirmed by the respective store, THE App SHALL notify the Backend (`POST /subscriptions/verify`) with the purchase receipt and receive confirmation.
-7. WHEN the Backend confirms the subscription, THE App SHALL persist the subscription status and navigate to `MainTabNavigator`.
-8. IF the in-app purchase is cancelled or fails, THEN THE App SHALL return the user to the Paywall screen and display an error message without locking the account.
-9. WHILE a Subscription_Plan is active and not expired, THE App SHALL allow full access to Signals, Accounts, and automated trading features.
-10. WHEN a Subscription_Plan expires, THE App SHALL redirect the user to the Paywall screen on next launch and disable live trading actions.
-11. THE Settings screen SHALL display the user's current Subscription_Plan name and renewal date.
-12. THE Paywall screen SHALL include a "Restore Purchase" button that calls the store's restore API and re-validates against the Backend.
+1. WHEN the App launches and a JWT exists in SecureStore, THE Auth_Store SHALL call `loadStoredAuth()` to read the JWT and Refresh_Token before any authenticated request is made and THE RootNavigator SHALL navigate to the authenticated flow.
+2. WHEN the App launches and no JWT exists in SecureStore or the SecureStore read fails, THE Auth_Store SHALL treat the session as unauthenticated and THE RootNavigator SHALL navigate to the Auth_Navigator.
+3. WHEN authenticated state is restored, THE RootNavigator SHALL inject the JWT into all service clients (Auth_Service, Account_Service, Signal_Service, Trade_Service, WebSocket_Service) before rendering MainTabNavigator, where "authenticated state" means a JWT is present in SecureStore and has not expired.
+4. WHEN an API request from any service returns an HTTP 401 response, THE API_Client SHALL automatically call `POST /auth/refresh` with the stored Refresh_Token to obtain a new JWT; if a refresh call is already in flight, subsequent 401 responses SHALL queue and retry after the refresh resolves.
+5. WHEN a new JWT is obtained from the refresh endpoint, THE API_Client SHALL update the JWT in SecureStore and in all service clients, then retry the original failed request exactly once.
+6. IF the refresh call itself returns a non-2xx response or a network error, THEN THE API_Client SHALL call `logout()` on the Auth_Store and THE RootNavigator SHALL navigate to the Auth_Navigator.
+7. IF a retried request (after token refresh) returns an HTTP 401 response, THEN THE API_Client SHALL call `logout()` on the Auth_Store and SHALL NOT attempt another refresh cycle.
+8. WHEN the user explicitly logs out, THE Auth_Store SHALL delete the JWT and Refresh_Token from SecureStore and reset all Zustand stores (Account_Store, Signal_Store, Trade_Store, Subscription_Store) to their initial states before disconnecting the WebSocket_Service.
 
 ---
 
-### Requirement 8: Broker Account Connection
+### Requirement 8: Subscription Paywall
 
-**User Story:** As a trader, I want to connect my live broker accounts to Slick AI, so that the AI can deliver signals and execute trades on my behalf.
-
-> **Current State:** `AccountsScreen`, `accountService`, and `accountStore` are fully implemented including the Deriv 2-step PAT flow and MT5/Oanda 1-step flow.
+**User Story:** As a new subscriber, I want to see the available subscription plans and purchase one, so that I can unlock live trading features.
 
 #### Acceptance Criteria
 
-1. THE AccountsScreen SHALL display all Connected_Accounts in a styled card list with a status colour stripe (active=`#00C851`, error=`#FF3B5C`, circuit_breaker=`#FF9500`, inactive=`#4A5568`).
-2. WHEN a user taps "Connect", THE App SHALL open a bottom-sheet modal with a horizontal broker selector (Deriv, MetaTrader 5, Oanda).
-3. WHEN the selected broker is Deriv, THE App SHALL present a 2-step connection flow: Step 1 collects the PAT token; Step 2 displays a picker of accounts returned by `POST /accounts/deriv/list-accounts`.
-4. WHEN the Deriv account list loads, THE App SHALL auto-select the first active real (non-demo) account in the list.
-5. WHEN the selected broker is MT5 or Oanda, THE App SHALL present a 1-step form collecting login number, password, and server fields.
-6. WHEN a user confirms connection, THE App SHALL call `POST /accounts/connect` and add the returned Connected_Account to the `accountStore`.
-7. IF the connection request fails, THEN THE App SHALL display an inline error banner inside the modal without closing it, so the user can correct their credentials.
-8. WHEN a user taps "Disconnect" on an AccountCard, THE App SHALL present a confirmation alert describing the consequences before calling `DELETE /accounts/:id`.
-9. THE AccountsScreen SHALL refresh the account list on pull-to-refresh and on mount.
-10. WHEN an account has `status = 'circuit_breaker_active'`, THE AccountCard SHALL display an orange "Circuit Breaker" badge explaining that automated trading is paused.
+1. WHEN the user is authenticated and the Subscription_Store shows `isSubscribed = false`, THE RootNavigator SHALL display the PaywallScreen instead of the MainTabNavigator.
+2. WHEN the PaywallScreen mounts, THE Subscription_Service SHALL call `getOfferings()` from RevenueCat and THE PaywallScreen SHALL display the available packages (monthly, quarterly, yearly).
+3. THE PaywallScreen SHALL display for each package: the plan name, billing period, formatted price string from RevenueCat, and a visual highlight (distinct background colour or border) on exactly one package designated as "most popular".
+4. IF `getOfferings()` returns an empty package list, THEN THE PaywallScreen SHALL display an error message stating that plans are temporarily unavailable and a "Retry" button.
+5. WHEN the user taps a package, THE PaywallScreen SHALL display a confirmation dialog showing the plan name and price before initiating purchase.
+6. WHEN the user confirms purchase, THE Subscription_Service SHALL call `purchasePackage()` and THE Subscription_Store SHALL update `isSubscribed` to `true` upon a successful entitlement response.
+7. WHEN the user taps "Restore Purchases", THE Subscription_Service SHALL call `restorePurchases()` and THE Subscription_Store SHALL update state based on the returned CustomerInfo.
+8. WHEN `restorePurchases()` returns CustomerInfo with no active entitlements, THE PaywallScreen SHALL display a message stating that no active subscription was found.
+9. IF a purchase call fails due to a RevenueCat or payment error, THEN THE PaywallScreen SHALL display the error message and remain visible so the user may retry.
+10. IF the RevenueCat native module is unavailable (Expo Go), THEN THE Subscription_Service SHALL return empty CustomerInfo and THE PaywallScreen SHALL display a message explaining that purchases require a native build.
+11. WHEN the Subscription_Service detects an active "pro" entitlement, THE Subscription_Store SHALL record the plan name and expiry date derived from the entitlement's `productIdentifier` and `expirationDate`.
 
 ---
 
-### Requirement 9: Trading Dashboard
+### Requirement 9: Broker Account Connection
 
-**User Story:** As a trader, I want a dashboard showing my real-time portfolio health, open positions, and equity curve, so that I can monitor my trading performance at a glance.
-
-> **Current State:** `DashboardScreen` is implemented with greeting, LIVE pill, AutomatedBanner, period filter tabs, summary cards, EquityChart, open positions list, pull-to-refresh, and skeleton loading.
+**User Story:** As a trader, I want to connect my forex broker account to the App, so that the AI can execute trades on my behalf or deliver signals in context.
 
 #### Acceptance Criteria
 
-1. THE DashboardScreen SHALL display a time-sensitive greeting in the format "{Good morning/afternoon/evening}, {firstName}".
-2. WHEN the WebSocket is connected, THE DashboardScreen SHALL display an animated pulsing green dot next to a "LIVE" pill in the header.
-3. THE DashboardScreen SHALL provide period filter tabs labelled `1D`, `7D`, `30D`, and `ALL`; selecting a tab SHALL re-fetch the Performance_Summary for that period.
-4. THE DashboardScreen SHALL display a summary card grid containing: total P&L (large card with direction-tinted gradient), win rate, total trade count, and open position count.
-5. THE App SHALL use `AnimatedNumber` to animate the total P&L value when it changes, counting smoothly to the new value.
-6. THE DashboardScreen SHALL render an Equity_Curve line chart using `react-native-svg`; IF no equity data exists, THEN THE App SHALL display a placeholder with a dashed baseline and the message "No equity data yet".
-7. THE DashboardScreen SHALL list all Open_Positions using `TradeCard` components, each showing: asset, direction badge, unrealised P&L, entry price, current price, lot size, hold duration, stop loss, and take profit.
-8. WHEN a WebSocket `position_update` event arrives, THE App SHALL update the corresponding Open_Position unrealised P&L with a smooth `AnimatedNumber` transition.
-9. WHILE at least one Connected_Account is in Automated_Trading_Mode, THE DashboardScreen SHALL display the `AutomatedBanner` component.
-10. WHEN no Open_Positions exist, THE DashboardScreen SHALL display an empty-state illustration and a contextual message depending on whether the user has an automated account.
-11. THE DashboardScreen SHALL support pull-to-refresh, which re-fetches Open_Positions and Performance_Summary simultaneously.
-12. WHEN dashboard data is loading for the first time, THE DashboardScreen SHALL display exactly 3 `SkeletonCard` placeholders.
+1. WHEN the user taps "Connect Account" on the AccountsScreen, THE AccountsScreen SHALL present a bottom-sheet modal with a broker selector showing Deriv, MetaTrader 5, and Oanda.
+2. WHEN the user selects Deriv, THE AccountsScreen SHALL display a two-step flow: Step 1 collects a Personal Access Token (PAT); Step 2 displays a list of accounts retrieved from the backend.
+3. WHEN the user taps "Next" in the Deriv Step 1 form with a non-empty PAT, THE Account_Service SHALL call `listDerivAccounts(pat)`.
+4. WHEN `listDerivAccounts` returns a non-empty list, THE AccountsScreen SHALL transition to Step 2 with the returned account list and auto-select the first active real-money account.
+5. IF `listDerivAccounts` returns an empty list, THEN THE AccountsScreen SHALL display an inline error message in Step 1 stating that no active accounts were found for the provided PAT.
+6. IF `listDerivAccounts` returns an API error, THEN THE AccountsScreen SHALL display the error message inline in Step 1 and remain on Step 1 for correction.
+7. IF the PAT field is empty when the user taps "Next", THEN THE AccountsScreen SHALL display an inline validation error below the PAT field and SHALL NOT call the Account_Service.
+8. WHEN the user taps "Connect" on the Step 2 Deriv form, THE Account_Service SHALL call `POST /accounts/connect` with the broker type and the selected account credentials.
+9. WHEN the user selects MetaTrader 5 or Oanda, THE AccountsScreen SHALL display a single-step form with login number, password, and server fields.
+10. IF any required field in the MT5 or Oanda form is empty when the user submits, THE AccountsScreen SHALL display inline validation errors and SHALL NOT call the Account_Service.
+11. WHEN the user submits a valid MT5 or Oanda form, THE Account_Service SHALL call `POST /accounts/connect` with the appropriate broker credentials.
+12. WHEN the connection API returns a 2xx response, THE Account_Store SHALL add the account to the accounts list and THE modal SHALL dismiss.
+13. IF the connection API call returns an error, THEN THE AccountsScreen modal SHALL display an inline error banner with the server message and remain open for correction.
+14. WHEN the user taps "Disconnect" on an account card and confirms the alert, THE Account_Service SHALL call `DELETE /accounts/:id` and THE Account_Store SHALL remove the account from the list.
+15. THE AccountsScreen SHALL display each connected account in a card showing broker name, account balance, currency, status badge (active, error, circuit_breaker, inactive), and subscription mode badge (Signal Delivery, Automated Trading).
 
 ---
 
-### Requirement 10: AI Signal Delivery
+### Requirement 10: Subscription Mode Selection
 
-**User Story:** As a trader, I want to receive real-time AI trading signals with confidence scores, so that I can make informed decisions or let the AI trade automatically.
-
-> **Current State:** `SignalsScreen`, `SignalCard`, `signalStore`, and `signalService` are implemented. WebSocket `signal` event handler is in `useWebSocket`. Signal expiry logic (15-minute window) is in `signalStore`.
+**User Story:** As a connected trader, I want to choose between Signal Delivery and Automated Trading per account, so that I can control the level of AI autonomy.
 
 #### Acceptance Criteria
 
-1. THE SignalsScreen SHALL display all received Signals in a `FlatList` with staggered entrance animations (80 ms delay per card, 400 ms fade + spring slide-up).
-2. WHEN a new Signal arrives via WebSocket `signal` event, THE App SHALL prepend it to the signal list.
-3. THE SignalCard SHALL display: asset pair, direction badge (BUY=green gradient, SELL=red gradient), entry price, stop loss (red), take profit (green), confidence percentage, and an animated confidence bar that grows from 0% to the stated value over 600 ms on mount.
-4. THE App SHALL check signal expiry every 60 seconds using a `setInterval`; WHEN a Signal's `generatedAt` age exceeds 15 minutes, THE App SHALL mark it as expired.
-5. WHEN a Signal has status `expired`, THE SignalCard SHALL render with 45% opacity and display an "EXPIRED" badge.
-6. WHERE a Connected_Account is in Automated_Trading_Mode, THE SignalCard SHALL display an "AUTO" badge and the text "Executing automatically..." with a loading spinner.
-7. THE SignalsScreen SHALL provide filter chips: `All`, `BUY`, `SELL`, and `Active`; selecting a chip SHALL filter the displayed list without re-fetching from the Backend.
-8. WHEN no Signals are present, THE SignalsScreen SHALL display a radio icon and the message "Waiting for signals...".
-9. THE SignalsScreen SHALL support pull-to-refresh to re-fetch signals from `GET /signals`.
-10. WHEN a new Signal arrives, THE App SHALL schedule a local push notification with the asset, direction, and entry price.
+1. THE SettingsScreen SHALL display a section for each connected account showing the current subscription mode as a toggle with two states: "Signal Delivery" and "Automated Trading".
+2. WHEN a new account is connected, THE Account_Store SHALL set the account's default subscription mode to "Signal Delivery".
+3. WHEN the user switches an account's mode to "Automated Trading", THE SettingsScreen SHALL display a risk-warning modal before sending any API request.
+4. THE risk-warning modal SHALL include a warning icon, a description of capital risk, a "Cancel" button, and an "I Understand" button.
+5. WHEN the user taps "I Understand" in the risk-warning modal, THE Account_Service SHALL send a mode update request with `{ accountId, mode: 'automated_trading' }`.
+6. WHEN the mode update request for "Automated Trading" returns a 2xx response, THE Account_Store SHALL update the account's mode to "automated_trading".
+7. WHEN the user switches an account's mode to "Signal Delivery", THE Account_Service SHALL send a mode update request with `{ accountId, mode: 'signal_delivery' }` without a confirmation modal.
+8. IF the subscription mode API call fails, THEN THE SettingsScreen SHALL display an inline error and revert the toggle to its previous state.
+9. WHEN the user taps "Cancel" in the risk-warning modal, THE modal SHALL close and THE account's mode SHALL remain unchanged.
 
 ---
 
-### Requirement 11: Real-time WebSocket Integration
+### Requirement 11: Real-Time Dashboard
 
-**User Story:** As a trader, I want the app to maintain a persistent real-time connection to the backend, so that position updates, signals, and trade events arrive instantly without manual refreshes.
-
-> **Current State:** `websocketService` and `useWebSocket` are implemented. WebSocket reconnection on `AppState` changes and the JWT refresh interceptor are not yet wired (T-701 to T-704).
+**User Story:** As an active trader, I want a live dashboard showing my portfolio performance and open positions, so that I can monitor my trading activity at a glance.
 
 #### Acceptance Criteria
 
-1. THE App SHALL maintain a single Socket.IO WebSocket connection per authenticated session; THE App SHALL NOT create multiple simultaneous connections.
-2. WHEN the App transitions from `background` to `active` state, THE WebSocket SHALL attempt to reconnect if it is not currently connected.
-3. WHEN the App transitions to `background` state, THE WebSocket SHALL pause reconnection attempts to conserve battery.
-4. WHEN a WebSocket `trade_executed` event arrives, THE App SHALL call `addTrade()` in `tradeStore` and schedule a local push notification.
-5. WHEN a WebSocket `trade_closed` event arrives, THE App SHALL call `closeTrade(tradeId, exitPrice, pnl)` in `tradeStore` and schedule a local push notification.
-6. WHEN a WebSocket `position_update` event arrives, THE App SHALL call `updatePosition(tradeId, partialPosition)` in `tradeStore`.
-7. WHEN the App authenticates or token changes, THE WebSocket SHALL inject the new JWT via `websocketService.setToken(token)` before connecting.
-8. WHEN the App logs out, THE WebSocket SHALL be disconnected and all event listeners SHALL be removed.
-9. WHEN an API request returns HTTP 401, THE App SHALL call `authService.refreshToken()` to obtain a new JWT, retry the original request with the new token, and update SecureStore; IF the refresh also fails, THEN THE App SHALL call `logout()`.
+1. THE DashboardScreen SHALL display a time-based greeting where "Good morning" is shown from 05:00 to 11:59, "Good afternoon" from 12:00 to 17:59, and "Good evening" from 18:00 to 04:59, followed by the firstName derived from the authenticated user's email prefix.
+2. WHEN the WebSocket_Service is connected, THE DashboardScreen SHALL display a green pulsing LiveDot and "LIVE" label.
+3. THE DashboardScreen SHALL display period filter tabs for `1D`, `7D`, `30D`, and `ALL`, with the active tab visually distinguished by a distinct background or underline indicator.
+4. WHEN the user taps a period tab, THE Trade_Store SHALL update `selectedPeriod` and THE DashboardScreen SHALL re-fetch the performance summary for the new period.
+5. WHEN the user taps a period tab, THE DashboardScreen SHALL re-fetch the equity curve for the new period.
+6. THE DashboardScreen SHALL display a Total P&L card using the AnimatedNumber component that transitions between numeric values over 400 milliseconds, coloured green when the value is positive or zero and red when negative.
+7. THE DashboardScreen SHALL display Win Rate, Total Trade Count, and Open Position Count in summary cards alongside the P&L card.
+8. WHEN the DashboardScreen is loading data for the first time, THE DashboardScreen SHALL display three SkeletonCard placeholders in place of the summary and chart sections.
+9. THE DashboardScreen SHALL display an EquityChart showing timestamped equity data as an SVG line chart with a gradient fill.
+10. THE DashboardScreen SHALL display all open positions as TradeCards below the chart, each showing asset, direction badge, unrealized P&L, entry price, current price, lot size, duration formatted as "Xh Ym", stop loss, and take profit.
+11. WHEN at least one connected account has `subscriptionMode = 'automated_trading'`, THE DashboardScreen SHALL display an AutomatedBanner above the period tabs.
+12. WHEN the user performs a pull-to-refresh gesture, THE DashboardScreen SHALL re-fetch open positions, performance summary, and equity curve simultaneously.
+13. IF any data fetch fails and no previously loaded data exists, THEN THE DashboardScreen SHALL display a non-blank error state with the error message and a retry action.
+14. IF any data fetch fails and previously loaded data exists, THEN THE DashboardScreen SHALL display an error banner with the message and preserve the previously loaded data.
 
 ---
 
-### Requirement 12: Trade History
+### Requirement 12: Real-Time Signals
 
-**User Story:** As a trader, I want to review my completed trades with performance statistics, so that I can analyse my strategy results over time.
-
-> **Current State:** `TradeHistoryScreen` and `tradeStore` closed trades state are implemented.
+**User Story:** As a trader, I want to see AI-generated trading signals pushed to my device in real time, so that I can act on opportunities immediately.
 
 #### Acceptance Criteria
 
-1. THE TradeHistoryScreen SHALL display aggregate stats above the list: total trade count, win rate percentage, and net P&L.
-2. THE TradeHistoryScreen SHALL provide direction filter chips (`All`, `BUY`, `SELL`) that filter the list without re-fetching.
-3. THE App SHALL render each Closed_Trade as a card with: direction left-stripe (4 px), asset pair, direction badge, P&L value (colour-coded), entry price → exit price, lot size, hold duration, close reason badge (e.g. "TAKE PROFIT", "STOP LOSS"), P&L percentage, and exit timestamp.
-4. THE TradeHistoryScreen SHALL support pull-to-refresh that re-fetches from `GET /trades`.
-5. WHEN no Closed_Trades exist, THE TradeHistoryScreen SHALL display an empty-state illustration and message.
-6. WHEN trade history data is loading for the first time, THE TradeHistoryScreen SHALL display skeleton card placeholders.
+1. THE SignalsScreen SHALL display a header showing the count of currently active (non-expired) signals and a LiveDot when the WebSocket_Service is connected.
+2. THE SignalsScreen SHALL display filter chips for `All`, `BUY`, `SELL`, and `Active` that filter the displayed signal list.
+3. WHEN a `signal` event is received from the WebSocket_Service, THE Signal_Store SHALL prepend the new signal to the list.
+4. WHEN a new signal is prepended to the list, THE SignalsScreen SHALL render it at the top with a staggered entrance animation.
+5. IF a `signal` event is received with an ID that already exists in the Signal_Store, THEN THE Signal_Store SHALL update the existing signal rather than adding a duplicate.
+6. THE SignalCard component SHALL display asset name, direction badge with gradient colour (green for BUY, red for SELL), entry price, stop loss, take profit, confidence score as a number between 0 and 100, and an animated confidence bar that fills from 0% to the score value over 600 milliseconds on mount.
+7. WHEN a signal's age exceeds 15 minutes since its `generatedAt` timestamp, THE Signal_Store SHALL mark that signal's status as `expired`.
+8. WHEN a signal's status is `expired`, THE SignalCard SHALL display an "EXPIRED" badge and reduce its opacity to 45%.
+9. THE SignalsScreen SHALL trigger an expiry check every 60 seconds; WHEN the check runs, THE Signal_Store SHALL evaluate all signals and mark any whose `generatedAt` is more than 900000 milliseconds in the past as `expired`.
+10. WHEN a new signal is received and notification permission is granted, THE Notification_Service SHALL schedule a local push notification with the asset name and direction.
+11. IF notification permission is denied, THEN THE Notification_Service SHALL not attempt to schedule a notification for the new signal.
+12. IF an account with `subscriptionMode = 'automated_trading'` exists AND the signal is not expired, THEN THE SignalCard SHALL display an "AUTO" badge and an "Executing automatically..." spinner.
+13. WHEN the signal list is empty after filters are applied, THE SignalsScreen SHALL display an empty state with an icon and a contextual message distinguishing between no signals received and all signals filtered out.
 
 ---
 
-### Requirement 13: Push Notifications
+### Requirement 13: Trade History
 
-**User Story:** As a trader, I want to receive push notifications for new signals and trade events, so that I am alerted even when the app is backgrounded.
-
-> **Current State:** `notificationService` is implemented with local notification scheduling. Push token registration with Backend and deep-link handling on notification tap are not yet wired (T-801 to T-804).
+**User Story:** As a trader, I want to review my historical trade performance, so that I can evaluate the AI's effectiveness over time.
 
 #### Acceptance Criteria
 
-1. WHEN a user first authenticates, THE App SHALL register the Expo push token with the Backend via `POST /notifications/register`.
-2. WHEN the App is in the foreground, THE App SHALL display in-app notification banners using `Notifications.setNotificationHandler`.
-3. WHEN a user taps a push notification with `type: 'signal'`, THE App SHALL deep-link to the Signals tab in `MainTabNavigator`.
-4. WHEN a user taps a push notification with `type: 'trade_executed'` or `type: 'trade_closed'`, THE App SHALL deep-link to the History tab in `MainTabNavigator`.
-5. IF a user has previously denied notification permissions, THEN THE Settings screen SHALL display a prompt explaining the benefit and a button to open the OS permissions settings screen.
-6. WHEN the App is in the background and a new Signal arrives via the Backend push service, THE App SHALL display a notification with the signal asset, direction, and entry price.
+1. THE TradeHistoryScreen SHALL display a stats bar showing total trade count, overall win rate as a percentage, and net P&L; by default the stats reflect all-time data and SHALL recalculate when a direction filter is applied.
+2. THE TradeHistoryScreen SHALL display filter chips for `All`, `BUY`, and `SELL` that filter the closed trade list.
+3. WHEN the user performs a pull-to-refresh gesture, THE TradeHistoryScreen SHALL re-fetch the closed trade list from `GET /trades`.
+4. IF the `GET /trades` fetch fails, THEN THE TradeHistoryScreen SHALL display an error message and preserve any previously loaded trade data.
+5. THE closed trade list SHALL be sorted with the most recent trade first and display each trade in a card with a 4-pixel direction colour stripe (green for BUY, red for SELL), asset name, direction badge, entry price, exit price, lot size, hold duration formatted as "Xh Ym", close reason badge (e.g., "TAKE PROFIT", "STOP LOSS"), P&L amount, and P&L percentage.
+6. WHEN the trade list is loading, THE TradeHistoryScreen SHALL display SkeletonCard placeholders.
+7. WHEN no trades exist for the selected filter, THE TradeHistoryScreen SHALL display an empty state with an icon and contextual message.
+8. IF the `GET /trades` fetch fails and no cached data exists, THEN THE TradeHistoryScreen SHALL display a non-blank error state with a retry action.
 
 ---
 
-### Requirement 14: Settings and Account Management
+### Requirement 14: Account Management
 
-**User Story:** As a user, I want to manage my profile, notification preferences, trading mode per account, and subscription, so that I can customise the app to my needs.
-
-> **Current State:** `SettingsScreen` is fully implemented including profile card, preferences, subscription mode toggle with risk confirmation modal, about section, and sign out.
+**User Story:** As a user, I want to see all my connected broker accounts and manage their settings from a single screen, so that I have full control over my integrations.
 
 #### Acceptance Criteria
 
-1. THE SettingsScreen SHALL display a profile card with a gradient avatar circle showing the user's email initial, full email address, and a truncated user ID.
-2. THE SettingsScreen SHALL provide a Push Notifications toggle that enables or disables local and remote notifications.
-3. THE SettingsScreen SHALL provide a Haptic Feedback toggle; WHEN enabled, THE App SHALL trigger `expo-haptics` impact feedback on: signal card appearance, trade card appearance, tab press, button press, and broker connection success.
-4. THE SettingsScreen SHALL list each Connected_Account with a toggle to switch between Signal_Delivery_Mode and Automated_Trading_Mode.
-5. WHEN a user switches a Connected_Account to Automated_Trading_Mode, THE App SHALL display a risk warning modal with "Cancel" and "I Understand" buttons before applying the change.
-6. WHEN a user switches a Connected_Account from Automated_Trading_Mode to Signal_Delivery_Mode, THE App SHALL apply the change immediately without a confirmation modal.
-7. THE SettingsScreen SHALL display the user's active Subscription_Plan and renewal date.
-8. THE SettingsScreen SHALL include links to the Privacy Policy and Terms of Service as tappable rows.
-9. WHEN a user taps "Sign Out", THE App SHALL present a confirmation alert; WHEN confirmed, THE App SHALL clear SecureStore, reset all Zustand stores, disconnect the WebSocket, and navigate to `AuthNavigator`.
+1. WHEN the AccountsScreen mounts, THE Account_Service SHALL fetch the current account list from `GET /accounts` and THE Account_Store SHALL be updated with the result.
+2. IF the `GET /accounts` fetch fails, THEN THE AccountsScreen SHALL display an error message and a retry action; previously cached accounts SHALL be preserved if available.
+3. THE AccountsScreen SHALL display each account in a card with a gradient background, a status colour stripe, broker name in uppercase, account balance, currency, status badge (one of: active, error, circuit_breaker, inactive), and subscription mode badge (one of: Signal Delivery, Automated Trading).
+4. WHEN the AccountsScreen is loading, THE AccountsScreen SHALL display exactly two SkeletonCard placeholders for the account list.
+5. WHEN no accounts are connected, THE AccountsScreen SHALL display an empty state with a call-to-action button to connect the first account.
+6. THE AccountsScreen SHALL always display a "Connect Account" button in a fixed position at the bottom of the screen regardless of how many accounts exist.
 
 ---
 
-### Requirement 15: Network Status and Error Resilience
+### Requirement 15: Settings and Profile
 
-**User Story:** As a user, I want the app to communicate clearly when I am offline or an error occurs, so that I understand what is happening and can take action.
-
-> **Current State:** Basic error banners exist on individual screens. Offline indicator (T-907), ErrorBoundary (T-908), and currency formatting helper (T-902) are not yet built.
+**User Story:** As a user, I want to manage my profile, preferences, and account sign-out from the Settings screen, so that I have control over the App's behaviour.
 
 #### Acceptance Criteria
 
-1. WHEN the device network connection is lost, THE App SHALL display a persistent "No internet connection" overlay banner at the bottom of the screen.
-2. WHEN the device network connection is restored, THE App SHALL automatically dismiss the offline banner and attempt to reconnect the WebSocket.
-3. THE App SHALL wrap `MainTabNavigator` in an `ErrorBoundary` component; IF an unhandled JavaScript error propagates to the boundary, THEN THE App SHALL display a graceful error screen with a "Restart" button instead of a blank or crashed screen.
-4. THE App SHALL format all currency values using a helper that respects the user's display currency setting, formats values ≥ 1,000 with a `K` suffix, and values ≥ 1,000,000 with an `M` suffix.
-5. IF an API request fails due to a network timeout, THEN THE App SHALL surface the error to the relevant screen's error banner without crashing.
+1. THE SettingsScreen SHALL display a profile card containing a gradient avatar circle with the first letter of the user's email, the full email address, and the user ID truncated to a maximum of 8 characters followed by an ellipsis.
+2. THE SettingsScreen SHALL display a "Push Notifications" toggle that reflects the stored notification preference; WHEN the user toggles the switch on, THE App SHALL enable local push notification scheduling and persist the enabled state; WHEN the user toggles the switch off, THE App SHALL disable local push notification scheduling and persist the disabled state.
+3. IF the device-level notification permission is denied, THEN THE SettingsScreen SHALL display the "Push Notifications" toggle in the off position and in a disabled state that prevents interaction.
+4. THE SettingsScreen SHALL display a "Haptic Feedback" toggle that reflects the stored haptic preference; WHEN the user toggles haptics on, THE App SHALL trigger an `expo-haptics` impulse on every button press, tab bar press, and toggle interaction; WHEN the user toggles haptics off, THE App SHALL suppress all `expo-haptics` impulse feedback.
+5. THE SettingsScreen SHALL display the current App version, a "Privacy Policy" link, and a "Terms of Service" link; WHEN the user taps either link, THE App SHALL open the corresponding URL in the device's default browser.
+6. WHEN the user taps "Sign Out" and confirms the alert dialog, THE Auth_Store SHALL call `logout()`, clearing SecureStore tokens and resetting all stores, and THE RootNavigator SHALL navigate to the Auth_Navigator.
+7. WHEN the user taps "Sign Out" and dismisses the alert dialog without confirming, THE App SHALL close the dialog and return to the SettingsScreen with no state changes applied.
 
 ---
 
-### Requirement 16: Accessibility
+### Requirement 16: Real-Time WebSocket Reliability
 
-**User Story:** As a user with accessibility needs, I want all interactive elements to be labelled, so that screen readers and assistive technologies can identify them correctly.
-
-> **Current State:** Accessibility labels are absent throughout the app (T-906 is unstarted).
+**User Story:** As a user who uses the App throughout the day, I want the real-time connection to recover automatically after interruptions, so that I never miss a signal or position update.
 
 #### Acceptance Criteria
 
-1. THE App SHALL provide an `accessibilityLabel` on every `Pressable`, `Switch`, and `TextInput` component in all screens.
-2. THE App SHALL provide an `accessibilityHint` on all `Pressable` components whose action is not obvious from its label alone.
-3. THE App SHALL set `accessibilityRole="button"` on all `Pressable` components acting as buttons.
-4. THE App SHALL set `accessibilityState={{ checked }}` on all `Switch` components to reflect their current toggle state.
-5. THE App SHALL set `accessibilityRole="tab"` on period filter tab and filter chip `Pressable` components.
+1. WHEN the App transitions to the foreground (`AppState` changes to `active`) and the WebSocket_Service is disconnected, THE WebSocket_Service SHALL automatically attempt to reconnect.
+2. WHILE the App is in the background (`AppState` is `background` or `inactive`), THE WebSocket_Service SHALL not attempt to reconnect or emit events.
+3. WHEN the WebSocket_Service connection state changes, THE WebSocket_Service SHALL notify all registered `onConnectionChange` listeners with a boolean value indicating whether the connection is currently established.
+4. THE WebSocket_Service SHALL implement an exponential back-off reconnection strategy starting with an initial delay of 1 second, doubling on each attempt (multiplier 2×), up to a maximum delay of 30 seconds per attempt, and SHALL cease retrying after 10 consecutive failed attempts.
+5. IF the WebSocket_Service has exhausted all 10 reconnection attempts without success, THEN THE WebSocket_Service SHALL notify all registered `onConnectionChange` listeners with a value of `false` and SHALL not attempt further reconnections until the App next transitions to the foreground.
+6. WHEN a `position_update` event is received, THE Trade_Store SHALL update the matching open position's unrealized P&L and current price without re-rendering unaffected positions in the list.
+7. WHEN a `trade_executed` event is received, THE Trade_Store SHALL add the new position to the open positions list.
+8. WHEN a `trade_executed` event is received, THE Notification_Service SHALL schedule a local push notification to be delivered within 2 seconds of the event being received.
+9. WHEN a `trade_closed` event is received, THE Trade_Store SHALL move the position from open to closed and record the exit price and P&L.
+10. WHEN a `trade_closed` event is received, THE Notification_Service SHALL schedule a local push notification to be delivered within 2 seconds of the event being received.
 
 ---
 
-### Requirement 17: UI Animations and Design System
+### Requirement 17: Push Notifications
 
-**User Story:** As a user, I want a polished, consistently animated interface, so that the app feels premium and professional.
-
-> **Current State:** Design tokens, Reanimated animations, and LinearGradient usage are implemented across all completed screens.
+**User Story:** As a user, I want to receive push notifications for new signals and trade events, so that I stay informed even when the App is in the background.
 
 #### Acceptance Criteria
 
-1. THE App SHALL use the design tokens defined in `src/theme/index.ts` (`COLORS`, `FONTS`, `RADIUS`, `SPACING`) for all visual properties; hard-coded values outside this file SHALL NOT be introduced.
-2. THE App SHALL use `#080B14` as the global background, `#00C851` as the brand/buy colour, and `#FF3B5C` as the sell/danger colour throughout all screens.
-3. WHEN any list card enters the viewport, THE App SHALL apply a staggered entrance animation: `withDelay(index * 80, withTiming(1, { duration: 400 }))` fade combined with a spring slide-up.
-4. WHEN a user presses any primary button, THE App SHALL animate the button scale to 0.96× using `withSpring` on press-in and back to 1× on press-out.
-5. THE EquityChart SHALL render as a filled SVG path with a linear gradient fill matching the P&L direction (green above baseline, red below).
-6. THE App SHALL use `LinearGradient` from `expo-linear-gradient` for all gradient backgrounds, cards, and button fills.
-7. THE App SHALL use `Ionicons` from `@expo/vector-icons` as the sole icon library.
+1. WHEN the user completes authentication for the first time in a session, THE Notification_Service SHALL register the Expo push token with the backend at `POST /notifications/register`.
+2. IF the push token registration request fails, THEN THE Notification_Service SHALL retry once after a 5-second delay; if the retry also fails, THE App SHALL continue functioning without push token registration.
+3. WHEN the App is in the foreground and a push notification arrives, THE Notification_Service SHALL display the notification as an in-app banner using the `setNotificationHandler` API from `expo-notifications`.
+4. WHEN the user taps a push notification with `type: 'signal'` while the App is running, THE RootNavigator SHALL navigate to the Signals tab of the MainTabNavigator.
+5. WHEN the user taps a push notification with `type: 'trade_executed'` or `type: 'trade_closed'` while the App is running, THE RootNavigator SHALL navigate to the Trades tab of the MainTabNavigator.
+6. WHEN the App is launched by the user tapping a push notification, THE RootNavigator SHALL navigate to the tab corresponding to the notification `type` after authentication and subscription state have been resolved.
+7. WHEN the App launches and notification permissions have not been requested, THE Notification_Service SHALL request permissions before any notification is scheduled.
+8. IF notification permissions are denied, THEN THE App SHALL function normally without notifications and the SettingsScreen SHALL display the "Push Notifications" toggle in a disabled state with a prompt to enable notifications in system settings.
 
 ---
 
-### Requirement 18: Test Coverage
+### Requirement 18: Security and Data Protection
 
-**User Story:** As a developer, I want automated tests for critical business logic, so that regressions are caught before they reach users.
-
-> **Current State:** Jest configuration and test suite are not yet created (T-1001 to T-1010).
+**User Story:** As a user, I want to know that my credentials, tokens, and trading data are protected from unauthorised access, so that my account and funds are safe.
 
 #### Acceptance Criteria
 
-1. THE App SHALL include a `jest.config.js` that configures `@testing-library/react-native`, module name mappers for all `expo-*` modules, and TypeScript path resolution.
-2. THE App SHALL include unit tests for `authStore` covering: successful login, failed login incrementing attempt counter, Lockout activation after 3 failures, and successful logout clearing SecureStore.
-3. THE App SHALL include unit tests for `signalStore` covering `markExpiredSignals` — for any Signal with `generatedAt` older than 15 minutes, the status SHALL be `expired`; for any Signal with `generatedAt` within 15 minutes, the status SHALL remain unchanged.
-4. THE App SHALL include unit tests for `tradeStore` covering `closeTrade` (moves trade from open positions to closed trades) and `updatePosition` (updates unrealised P&L on the matching open position).
-5. THE App SHALL include unit tests for `accountStore` covering add, remove, and `setSubscriptionMode` actions.
-6. THE App SHALL include a property-based test asserting: for any array of Closed_Trades with individual P&L values, `totalPnl === sum(individualPnls)` and `0 ≤ winRate ≤ 1`.
-7. THE App SHALL include a property-based test asserting: for any `generatedAt` timestamp value, `isExpired` is `true` if and only if the age of the timestamp exceeds 15 minutes.
-8. THE App SHALL include integration tests for `AuthNavigator` verifying that tapping "Register" on `LoginScreen` navigates to `RegisterScreen` and tapping the back affordance returns to `LoginScreen`.
+1. THE App SHALL store the JWT and Refresh_Token exclusively in SecureStore backed by the device's hardware keystore or Secure Enclave; these values SHALL NOT be stored in AsyncStorage, memory-only state, or logged.
+2. WHEN constructing API requests, THE API_Client SHALL include the JWT in the `Authorization: Bearer {token}` header and SHALL NOT embed credentials in URL query parameters.
+3. THE App SHALL enforce TLS certificate validation for all HTTPS API calls; IF a connection endpoint presents a self-signed, expired, or hostname-mismatched certificate, THEN THE App SHALL reject the connection and surface an error message indicating a certificate validation failure to the user.
+4. WHEN a user submits a login attempt, THE Auth_Store SHALL record the failure count; IF the user accumulates 3 consecutive failed login attempts, THEN THE Auth_Store SHALL lock the account for exactly 15 minutes, reject further login attempts during that period with an error message indicating the lockout duration, and reset the failure count to 0 upon successful authentication.
+5. THE App SHALL never log JWT values, Refresh_Token values, broker credentials, or personally identifiable information in production builds; `__DEV__` guards SHALL surround all diagnostic console output.
+6. IF an HTTP request made by THE API_Client does not receive a complete response within 15 seconds, THEN THE API_Client SHALL cancel the request and surface an error message indicating a request timeout to the user.
+7. WHEN the user logs out, THE App SHALL delete all tokens from SecureStore, reset all in-memory stores, and disconnect the WebSocket_Service within 2 seconds of the logout action being confirmed.
+8. THE RegisterScreen and LoginScreen SHALL transmit passwords exclusively over TLS; no plain-text password SHALL be stored on device at any point.
+9. WHERE broker credentials (PAT, MT5 login/password) are entered, THE AccountsScreen SHALL use `secureTextEntry` on password fields and SHALL NOT retain credential values in component state after the form submission response is received.
+10. IF THE App is placed into the background for more than 15 minutes while a user session is active, THEN THE App SHALL invalidate the in-memory session state and require the user to re-authenticate upon returning to the foreground.
 
 ---
 
-### Requirement 19: CI/CD Pipeline and Expo Go Development
+### Requirement 19: Offline and Network Resilience
 
-**User Story:** As a developer, I want an automated build and preview pipeline, so that every pull request is tested and the app can be previewed on a device via Expo Go during development.
-
-> **Current State:** `eas.json` is referenced in the task list (T-008) but the GitHub Actions workflow and full EAS build configuration are not yet created (T-1101 to T-1108).
+**User Story:** As a user who may have intermittent connectivity, I want the App to handle network interruptions gracefully, so that it does not crash or show confusing blank states.
 
 #### Acceptance Criteria
 
-1. THE App SHALL be runnable in Expo Go by executing `npx expo start` without requiring a full native build, for all features that do not depend on native modules unavailable in Expo Go.
-2. THE App SHALL include a `.github/workflows/android-build.yml` GitHub Actions workflow that runs on every push to the `main` branch and on every pull request targeting `main`.
-3. WHEN the CI workflow runs, THE pipeline SHALL execute `npm test` and fail the build if any test fails.
-4. WHEN all tests pass, THE CI workflow SHALL trigger an EAS build for the Android APK (debug profile).
-5. THE `eas.json` SHALL define at minimum three build profiles: `development` (internal distribution, debug), `preview` (internal distribution, release), and `production` (store distribution, release).
-6. THE `eas.json` SHALL inject `API_BASE_URL` as an environment variable per profile so that development, preview, and production each point to the correct Backend URL.
-7. THE App SHALL include `proguard-rules.pro` with rules that prevent obfuscation of React Native internals and Socket.IO class names for the production Android build.
-8. THE App SHALL include a correctly configured adaptive icon with a separate foreground (`android-icon-foreground.png`) and background (`android-icon-background.png`) layer for Android.
-9. THE App SHALL specify all required permissions in `app.json` — including push notifications, biometric authentication, and camera (for future QR broker onboarding) — before submission to either store.
-10. WHEN an EAS build completes successfully, THE CI workflow SHALL post a build artifact link or EAS build URL as a comment on the corresponding pull request.
+1. WHEN the device loses internet connectivity, THE NetworkBanner component SHALL appear at the top of all MainTabNavigator screens displaying "No internet connection".
+2. WHEN internet connectivity is restored, THE NetworkBanner SHALL dismiss automatically within 1 second.
+3. IF an API call fails due to a network connectivity error (no reachable host, request timeout, or no internet) and previously loaded data exists in the relevant screen store, THEN THE screen SHALL preserve and display the stale data alongside a visible warning indicator consisting of an icon and a text label indicating the data may be outdated.
+4. IF an API call fails due to a network connectivity error and no previously loaded data exists in the relevant screen store, THEN THE screen SHALL display a non-blank error state with a message indicating data could not be loaded and a retry action.
+5. THE App SHALL use `@react-native-community/netinfo` to detect connectivity changes and drive the NetworkBanner visibility.
 
 ---
 
-### Requirement 20: Security and Credential Handling
+### Requirement 20: Animations and Motion Design
 
-**User Story:** As a user, I want my authentication tokens and broker credentials to be stored securely, so that my financial accounts cannot be accessed if my device is lost.
-
-> **Current State:** JWT and refresh token storage in SecureStore is implemented. Broker credentials are sent to the Backend and not persisted locally beyond the connection flow.
+**User Story:** As a user, I want the App to feel responsive and polished through smooth animations, so that the experience is enjoyable and professional.
 
 #### Acceptance Criteria
 
-1. THE App SHALL store all JWTs and refresh tokens exclusively in SecureStore; JWT SHALL NOT be stored in AsyncStorage, local files, or Redux/Zustand persistent middleware with unencrypted storage.
-2. THE App SHALL transmit broker credentials (PAT, login/password) to the Backend only over HTTPS; credentials SHALL NOT be logged or persisted on-device after a successful connection call.
-3. THE App SHALL inject the JWT into every authenticated API request as an `Authorization: Bearer {token}` header via an `axios` request interceptor.
-4. WHEN the JWT expires and a refresh token is available, THE App SHALL transparently refresh the JWT without requiring the user to log in again (see Requirement 11, criterion 9).
-5. WHEN the App is placed in the background for more than 15 minutes, THE App SHALL require the user to re-authenticate via biometrics or password on next foreground if biometric authentication is available and enabled.
-6. THE App SHALL obfuscate all password and PAT `TextInput` fields using `secureTextEntry={true}`.
+1. WHEN a list of SignalCards, TradeCards, or AccountCards renders, THE App SHALL animate each card in with a staggered entry delay of 80 milliseconds multiplied by the card's zero-based index, where each card transitions from opacity 0 to opacity 1 over 400 milliseconds.
+2. WHEN any primary action button (login, register, purchase, connect) receives a press-in event, THE button SHALL scale to 0.96 of its original size; WHEN the press-out event is received, THE button SHALL return to a scale of 1.0 using a spring animation.
+3. WHEN the DashboardScreen header renders, THE header SHALL begin at opacity 0 and a vertical offset of -20 points below its final position, then transition to opacity 1 and its final position using a spring animation with default spring configuration.
+4. WHEN the AnimatedNumber component receives a new numeric `value` prop, THE component SHALL interpolate the displayed number from its previous value to the new value over exactly 400 milliseconds, updating the display at each animation frame.
+5. THE App SHALL use `react-native-reanimated` for all animations; no `Animated` API from React Native core SHALL be used for new animations.
+6. IF haptic feedback is enabled in Settings, THEN WHEN a tab press event occurs, THE App SHALL trigger a light impact haptic feedback event.
+7. IF haptic feedback is enabled in Settings, THEN WHEN a connect or purchase action completes successfully, THE App SHALL trigger a success notification haptic feedback event.
+
+---
+
+### Requirement 21: Accessibility
+
+**User Story:** As a user with accessibility needs, I want all interactive elements to be properly labelled and usable with assistive technologies, so that the App is inclusive.
+
+#### Acceptance Criteria
+
+1. THE App SHALL provide an `accessibilityLabel` prop on every `Pressable`, `TouchableOpacity`, `Switch`, and `TextInput` element that describes its purpose in plain language, where the label text is between 1 and 40 characters and uniquely identifies the element's purpose within its screen context.
+2. THE App SHALL provide an `accessibilityRole` prop on all interactive elements: `button` for tappable actions, `tab` for period filter chips, `switch` for toggles, and `header` for screen title text.
+3. WHEN a form field has a validation error, THE App SHALL set `accessibilityState={{ invalid: true }}` on that field and provide an `accessibilityHint` referencing the associated error message text so that a screen reader announces the error when the field receives focus.
+4. THE App SHALL maintain a minimum touch target size of 44×44 points for all interactive elements, applied via padding or a minimum width/height constraint, regardless of the visual size of the element's content.
+5. WHEN the App displays colour-coded information (e.g., green for profit, red for loss), THE App SHALL also render a visible text label or icon adjacent to the colour indicator that conveys the same meaning without relying on colour alone.
+6. IF an interactive element receives focus via a screen reader, THEN THE App SHALL announce the element's `accessibilityLabel` and `accessibilityRole` without requiring any additional user gesture.
+
+---
+
+### Requirement 22: CI/CD and Build Pipeline
+
+**User Story:** As a developer, I want code pushed to the main branch to automatically run tests and trigger an EAS build, so that I can catch regressions early and deliver builds without manual steps.
+
+#### Acceptance Criteria
+
+1. WHEN code is pushed to the `main` branch or a pull request targets `main`, THE CI/CD pipeline SHALL run `npm test -- --passWithNoTests --forceExit` and fail the pipeline if any test exits with a non-zero status code.
+2. WHEN all tests pass on a push to the `main` branch, THE CI/CD pipeline SHALL trigger an EAS development build for Android using `eas build --platform android --profile development --non-interactive`.
+3. WHEN a build is triggered on a pull request, THE CI/CD pipeline SHALL post a comment on the PR containing the EAS build dashboard URL within 60 seconds of the build being queued.
+4. THE CI/CD pipeline SHALL inject `EXPO_PUBLIC_API_BASE_URL` into each build by reading the value from the corresponding `eas.json` build profile (development, preview, production), and the build SHALL fail if the variable is absent or empty.
+5. THE CI/CD pipeline SHALL set up the EAS CLI using `expo/expo-github-action@v8` with `eas-version: latest` before any `eas` command is executed.
+6. THE EAS build profile `production` SHALL set `buildType` to `app-bundle` for the Android platform targeting Play Store submission and set `buildType` to `archive` for the iOS platform targeting App Store submission.
+7. IF the EAS build command exits with a non-zero status code, THEN THE CI/CD pipeline SHALL fail the workflow and surface the EAS error output in the pipeline logs.
+
+---
+
+### Requirement 23: Developer Experience (Expo Go)
+
+**User Story:** As a developer, I want to preview UI changes instantly on my physical device using Expo Go during development, so that I can iterate quickly without rebuilding.
+
+#### Acceptance Criteria
+
+1. THE App SHALL start with `expo start` and be fully renderable in Expo Go for all screens that do not depend on native-only modules (react-native-purchases).
+2. WHERE a native-only module (Subscription_Service, RevenueCat) is unavailable in Expo Go, THE App SHALL fall back gracefully to stub behaviour without crashing, where stub behaviour means returning hardcoded default values (e.g., subscription status: inactive, no active entitlements) without throwing an exception or displaying an unhandled error screen.
+3. THE App SHALL use `EXPO_PUBLIC_*` environment variables for all runtime configuration, ensuring values are accessible during both Expo Go sessions and EAS builds; any screen or service that reads runtime configuration and receives an undefined `EXPO_PUBLIC_*` value SHALL display an error message indicating the missing variable name and halt further initialisation of that screen or service.
+4. WHEN running in `__DEV__` mode, THE App SHALL log the API base URL and endpoint being called for each request to assist debugging, without logging auth token values.
+5. IF a required `EXPO_PUBLIC_*` environment variable is undefined at startup, THEN THE App SHALL display an error message indicating which variable is missing and prevent app initialisation from completing.
+
+---
+
+### Requirement 24: Testing Coverage
+
+**User Story:** As a developer, I want the critical business logic to be covered by automated tests, so that regressions are detected before deployment.
+
+#### Acceptance Criteria
+
+1. THE Auth_Store SHALL have unit tests covering: successful login populates `user` and `token`; failed login increments `failedAttempts`; three consecutive failures set a lockout timestamp (subsequent failures do not overwrite the existing timestamp); logout clears `user`, `token`, `failedAttempts`, and `lockoutUntil`.
+2. WHEN `markExpiredSignals` is called on the Signal_Store, THE Signal_Store SHALL mark as `expired` every signal whose `generatedAt` timestamp is more than 900000 milliseconds before the current time, and this SHALL be verified by a property-based test with generated timestamps spanning both sides of the 900000ms boundary.
+3. WHEN `closeTrade` is called on the Trade_Store with a valid trade ID, THE Trade_Store SHALL remove the position from `openPositions`, add a corresponding entry to `closedTrades`, and record the exit price and P&L calculated as `(exitPrice - entryPrice) × quantity × direction`.
+4. IF `closeTrade` is called with a trade ID not present in `openPositions`, THEN THE Trade_Store SHALL leave all state unchanged and return an error indicator.
+5. THE `useAuth` hook SHALL have unit tests covering: email validation rejects values missing `@`, values missing a domain after `@`, and empty strings; valid credentials invoke the Auth_Service login method; biometric fallback returns false when no stored token exists.
+6. THE P&L calculation helpers SHALL have property-based tests asserting: `totalPnl` equals the sum of individual position P&Ls; `winRate` equals the count of positions with `pnl > 0` divided by the total count of closed positions and is always in the range `[0, 1]`.
+7. THE signal expiry property-based test SHALL assert: for any `generatedAt` timestamp, `isExpired` is `true` if and only if the current time minus `generatedAt` exceeds 900000 milliseconds (15 minutes).
+8. THE test suite SHALL be runnable with `npm test` using Jest and `jest-expo` without requiring a network connection or native device.
+
+---
+
+### Requirement 25: Error Handling and Crash Recovery
+
+**User Story:** As a user, I want the App to recover gracefully from unexpected errors, so that a crash in one screen does not destroy my entire session.
+
+#### Acceptance Criteria
+
+1. THE MainTabNavigator SHALL be wrapped in an ErrorBoundary component that catches unhandled React render errors.
+2. WHEN the ErrorBoundary catches an error, THE ErrorBoundary SHALL display a fallback UI that contains a visible error message indicating that something went wrong and a tappable "Reload" button, without displaying raw stack traces, internal error objects, or server-side exception details.
+3. WHEN the user taps the "Reload" button in the ErrorBoundary fallback UI, THE ErrorBoundary SHALL remount the failed screen subtree and restore the MainTabNavigator to its pre-error navigational state.
+4. IF the application is running in `__DEV__` mode AND the ErrorBoundary catches an error, THEN THE ErrorBoundary SHALL log the error name, message, and component stack to the development console.
+5. WHEN an API call returns a 5xx response, THE affected screen SHALL replace its content area with an error message indicating that a server error occurred and a tappable "Retry" button that re-initiates the same API call.
+6. THE App SHALL not display raw stack traces, internal error objects, or server-side exception details to end users in production builds.
+
+---
+
+### Requirement 26: Legal and Compliance
+
+**User Story:** As a user and as the product owner, I want the App to comply with relevant legal requirements, so that there are no liability issues from the product's operation.
+
+#### Acceptance Criteria
+
+1. THE App SHALL display a "Privacy Policy" link and a "Terms of Service" link in the SettingsScreen's "About" section; WHEN the user taps either link, THE App SHALL open the corresponding document within 2 seconds in the device's default browser.
+2. THE PaywallScreen SHALL display a persistently visible disclaimer — not hidden behind a scroll or modal — stating that trading involves risk and past AI performance does not guarantee future results.
+3. THE App SHALL not persist broker credentials (PAT, MT5 password) to SecureStore, AsyncStorage, logs, analytics events, or crash reports; credential values SHALL exist only in memory for the duration of the form submission request lifecycle and SHALL be discarded immediately after the API response is received.
+4. WHEN displaying trading signals or performance data, THE App SHALL render a visible disclaimer on the same screen stating that the information is for informational purposes only and does not constitute financial advice.
+5. IF the app is running on iOS and a subscription purchase is initiated, THEN the purchase SHALL be processed exclusively through Apple In-App Purchase via RevenueCat and no alternative payment path SHALL be presented.
+6. IF the app is running on Android and a subscription purchase is initiated, THEN the purchase SHALL be processed exclusively through Google Play Billing via RevenueCat and no alternative payment path SHALL be presented.

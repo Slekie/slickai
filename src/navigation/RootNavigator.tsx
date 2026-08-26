@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -93,11 +93,13 @@ const AppContent: React.FC = () => {
   const { isAuthenticated, user } = useAuthStore();
   const { isSubscribed, setSubscription } = useSubscriptionStore();
   const [checkingSubscription, setCheckingSubscription] = useState(false);
+  // In __DEV__ + Expo Go (native SDK unavailable) we bypass the paywall so
+  // the dashboard is reachable during development without a real purchase.
+  const [devBypassPaywall, setDevBypassPaywall] = useState(false);
 
   useWebSocket();
   useAppStateWebSocket();
 
-  // After authentication, configure RevenueCat and check entitlement
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 
@@ -106,8 +108,23 @@ const AppContent: React.FC = () => {
 
     void subscriptionService.getCustomerInfo().then((info) => {
       setSubscription(info);
+
+      // Dev-only paywall bypass: if we are in __DEV__ and RevenueCat returned
+      // an empty CustomerInfo (native SDK unavailable in Expo Go), skip the
+      // paywall so the full app UI is reachable during development.
+      if (__DEV__) {
+        const hasAnyPurchase = info.allPurchasedProductIdentifiers.length > 0;
+        const isFirstSeen = new Date(info.firstSeen).getTime() === 0 ||
+          info.originalAppUserId === '';
+        const sdkUnavailable = !hasAnyPurchase && isFirstSeen;
+        if (sdkUnavailable) {
+          setDevBypassPaywall(true);
+          if (__DEV__) console.log('[RootNavigator] DEV mode: paywall bypassed (Expo Go / no native SDK)');
+        }
+      }
     }).catch(() => {
-      // Treat error as no subscription — PaywallScreen handles the retry
+      // Treat error as no subscription
+      if (__DEV__) setDevBypassPaywall(true);
     }).finally(() => {
       setCheckingSubscription(false);
     });
@@ -116,7 +133,9 @@ const AppContent: React.FC = () => {
   if (!isAuthenticated) return <AuthNavigator />;
   if (checkingSubscription) return <SplashScreen />;
 
-  return isSubscribed ? (
+  const showMainApp = isSubscribed || devBypassPaywall;
+
+  return showMainApp ? (
     <ErrorBoundary>
       <MainTabNavigator />
       <NetworkBanner />
@@ -134,7 +153,6 @@ export const RootNavigator: React.FC = () => {
 
   useEffect(() => {
     const init = async () => {
-      // Run auth restore and notification setup in parallel (Req 1.7)
       await Promise.all([
         loadStoredAuth(),
         notificationService.initialize(),
@@ -142,22 +160,17 @@ export const RootNavigator: React.FC = () => {
       await notificationService.requestPermissions();
       const done = await hasCompletedOnboarding();
       setOnboardingDone(done);
-      // Show splash for at least 1.8s for branding
       setTimeout(() => setShowSplash(false), 1800);
     };
     void init();
 
-    // Register notification tap deep-link listener
     const cleanup = notificationService.addNotificationResponseListener((response) => {
       const data = response.notification.request.content.data as Record<string, unknown>;
       if (!navigationRef.isReady()) return;
-
       const type = data?.type as string | undefined;
       if (type === 'signal') {
-        // Navigate to Signals tab
         navigationRef.navigate('Signals' as never);
       } else if (type === 'trade_executed' || type === 'trade_closed') {
-        // Navigate to Trades tab
         navigationRef.navigate('Trades' as never);
       }
     });
@@ -180,12 +193,10 @@ export const RootNavigator: React.FC = () => {
     }
   }, [isAuthenticated, token]);
 
-  // Show splash until auth is loaded AND minimum splash time has passed
   if (showSplash || isLoading || onboardingDone === null) {
     return <SplashScreen />;
   }
 
-  // First launch onboarding
   if (!onboardingDone) {
     return <OnboardingScreen onComplete={() => setOnboardingDone(true)} />;
   }

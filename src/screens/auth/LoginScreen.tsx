@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -21,8 +21,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { authService } from '../../services/authService';
 import { COLORS, FONTS, RADIUS, SPACING } from '../../theme';
-import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
-import { AppleSignInButton } from '../../components/auth/AppleSignInButton';
 
 type AuthStackParamList = {
   Login: undefined;
@@ -41,19 +39,24 @@ function formatLockoutTime(ms: number): string {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const { login, loginWithBiometrics, isLoading, isLockedOut, lockoutRemainingMs, failedAttempts } =
-    useAuth();
+  const {
+    login,
+    loginWithBiometrics,
+    isLoading,
+    isLockedOut,
+    lockoutRemainingMs,
+    failedAttempts,
+  } = useAuth();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [email, setEmail]               = useState('');
+  const [password, setPassword]         = useState('');
+  const [error, setError]               = useState<string | null>(null);
+  const [emailError, setEmailError]     = useState<string | null>(null);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
-  
-  // Track focused field directly with a single simple string or null
-  const [activeInput, setActiveInput] = useState<'email' | 'password' | null>(null);
+  const [activeInput, setActiveInput]   = useState<'email' | 'password' | null>(null);
 
   const passwordRef = useRef<TextInput>(null);
-  const btnScale = useSharedValue(1);
+  const btnScale    = useSharedValue(1);
 
   useEffect(() => {
     authService.isBiometricAvailable().then(setBiometricAvailable).catch(() => undefined);
@@ -63,11 +66,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     transform: [{ scale: btnScale.value }],
   }));
 
-  const validateInputs = (): boolean => {
-    if (!email.trim()) { setError('Email is required'); return false; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError('Enter a valid email address'); return false;
+  // Inline email validation — also called on blur
+  const validateEmail = (value: string): boolean => {
+    if (!value.trim()) {
+      setEmailError('Email is required');
+      return false;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+      setEmailError('Enter a valid email address');
+      return false;
+    }
+    setEmailError(null);
+    return true;
+  };
+
+  const validateAll = (): boolean => {
+    if (!validateEmail(email)) return false;
     if (!password) { setError('Password is required'); return false; }
     return true;
   };
@@ -75,29 +89,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const handleLogin = useCallback(async () => {
     if (isLockedOut) return;
     setError(null);
-    if (!validateInputs()) return;
+    setEmailError(null);
+    if (!validateAll()) return;
+
     try {
-      if (__DEV__) {
-        console.log('[Login] Attempting login for:', email.trim().toLowerCase());
-        console.log('[Login] URL:', `${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://saita-backend.onrender.com'}/auth/login`);
-      }
+      if (__DEV__) console.log('[Login] Attempting:', email.trim().toLowerCase());
       await login(email.trim().toLowerCase(), password);
-      if (__DEV__) console.log('[Login] Success');
     } catch (err: unknown) {
       if (__DEV__) console.error('[Login] Error:', err);
       if (err && typeof err === 'object' && 'response' in err) {
-        const axiosErr = err as { response?: { data?: { message?: string }; status?: number } };
-        const msg = axiosErr.response?.data?.message;
-        const status = axiosErr.response?.status;
-        if (msg) {
-          setError(msg);
-        } else if (status === 401) {
-          setError('Invalid email or password.');
-        } else if (status === 0 || !status) {
-          setError('Cannot reach the server. Check your internet connection.');
-        } else {
-          setError(`Login failed (${status}). Please try again.`);
-        }
+        const ax = err as { response?: { data?: { message?: string }; status?: number } };
+        const msg    = ax.response?.data?.message;
+        const status = ax.response?.status;
+        if (msg)                   { setError(msg); }
+        else if (status === 401)   { setError('Invalid email or password.'); }
+        else if (!status)          { setError('Cannot reach the server. Check your internet connection.'); }
+        else                       { setError(`Login failed (${status}). Please try again.`); }
       } else {
         setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.');
       }
@@ -107,13 +114,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const handleBiometric = useCallback(async () => {
     setError(null);
     try {
-      const success = await loginWithBiometrics();
-      if (!success) setError('Biometric authentication failed');
+      const ok = await loginWithBiometrics();
+      if (!ok) setError('Biometric authentication failed');
     } catch {
       setError('Biometric authentication failed');
     }
   }, [loginWithBiometrics]);
 
+  // ── Lockout screen ────────────────────────────────────────────────────────
   if (isLockedOut) {
     return (
       <LinearGradient colors={COLORS.gradientBg} style={styles.container}>
@@ -128,6 +136,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     );
   }
 
+  // ── Main login form ───────────────────────────────────────────────────────
   return (
     <LinearGradient colors={COLORS.gradientBg} style={styles.container}>
       <KeyboardAvoidingView
@@ -141,7 +150,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
-          {/* Logo */}
+          {/* ── Logo ──────────────────────────────────────────────────────── */}
           <View style={styles.logoContainer}>
             <LinearGradient
               colors={COLORS.gradientBuy}
@@ -155,156 +164,172 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             <Text style={styles.subtitle}>AI Trading Platform</Text>
           </View>
 
-          {/* Form */}
-          <View>
-            {error && (
-              <View style={styles.errorBanner}>
-                <Ionicons name="alert-circle" size={16} color={COLORS.error} />
-                <Text style={styles.errorText}> {error}</Text>
-              </View>
-            )}
-
-            {failedAttempts > 0 && !isLockedOut && (
-              <Text style={styles.attemptsWarning}>
-                {failedAttempts} failed attempt{failedAttempts !== 1 ? 's' : ''} — locks after 3
-              </Text>
-            )}
-
-            {/* Email */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email</Text>
-              <View style={[styles.inputWrapper, activeInput === 'email' && styles.inputWrapperFocused]}>
-                <Ionicons
-                  name="mail-outline"
-                  size={18}
-                  color={activeInput === 'email' ? COLORS.primary : COLORS.textSecondary}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="your@email.com"
-                  placeholderTextColor={COLORS.textMuted}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  editable={!isLoading}
-                  returnKeyType="next"
-                  onSubmitEditing={() => passwordRef.current?.focus()}
-                  onFocus={() => setActiveInput('email')}
-                  onBlur={() => setActiveInput(null)}
-                  accessibilityLabel="Email address"
-                />
-              </View>
+          {/* ── General error banner ──────────────────────────────────────── */}
+          {error ? (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle" size={16} color={COLORS.error} />
+              <Text style={styles.errorText}> {error}</Text>
             </View>
+          ) : null}
 
-            {/* Password */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Password</Text>
-              <View style={[styles.inputWrapper, activeInput === 'password' && styles.inputWrapperFocused]}>
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={18}
-                  color={activeInput === 'password' ? COLORS.primary : COLORS.textSecondary}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  ref={passwordRef}
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="••••••••"
-                  placeholderTextColor={COLORS.textMuted}
-                  secureTextEntry
-                  autoComplete="current-password"
-                  editable={!isLoading}
-                  returnKeyType="done"
-                  onSubmitEditing={handleLogin}
-                  onFocus={() => setActiveInput('password')}
-                  onBlur={() => setActiveInput(null)}
-                  accessibilityLabel="Password"
-                />
-              </View>
+          {/* ── Failed attempts warning ───────────────────────────────────── */}
+          {failedAttempts > 0 && !isLockedOut ? (
+            <Text style={styles.attemptsWarning}>
+              {failedAttempts} failed attempt{failedAttempts !== 1 ? 's' : ''} — locks after 3
+            </Text>
+          ) : null}
+
+          {/* ── Email field ───────────────────────────────────────────────── */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Email</Text>
+            {/* accessibilityState with invalid lives on the View, not TextInput */}
+            <View
+              style={[
+                styles.inputWrapper,
+                activeInput === 'email' ? styles.inputWrapperFocused : null,
+                emailError ? styles.inputWrapperError : null,
+              ]}
+              accessibilityRole="none"
+            >
+              <Ionicons
+                name="mail-outline"
+                size={18}
+                color={
+                  emailError
+                    ? COLORS.error
+                    : activeInput === 'email'
+                    ? COLORS.primary
+                    : COLORS.textSecondary
+                }
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={(t) => { setEmail(t); if (emailError) validateEmail(t); }}
+                placeholder="your@email.com"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                editable={!isLoading}
+                returnKeyType="next"
+                onSubmitEditing={() => passwordRef.current?.focus()}
+                onFocus={() => setActiveInput('email')}
+                onBlur={() => { setActiveInput(null); validateEmail(email); }}
+                accessibilityLabel="Email address"
+                accessibilityHint={emailError ?? undefined}
+              />
             </View>
+            {emailError ? <Text style={styles.fieldError}>{emailError}</Text> : null}
+          </View>
 
-            {/* Login button */}
-            <Animated.View style={btnAnimStyle}>
-              <Pressable
-                style={[styles.loginButton, isLoading && styles.buttonDisabled]}
-                onPress={handleLogin}
-                onPressIn={() => { btnScale.value = withSpring(0.96); }}
-                onPressOut={() => { btnScale.value = withSpring(1); }}
-                disabled={isLoading}
-                accessibilityRole="button"
-                accessibilityLabel="Sign in"
-                accessibilityState={{ disabled: isLoading }}
-              >
-                <LinearGradient
-                  colors={COLORS.gradientBuy}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.loginGradient}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.loginButtonText}>Sign In</Text>
-                  )}
-                </LinearGradient>
-              </Pressable>
-            </Animated.View>
+          {/* ── Password field ────────────────────────────────────────────── */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Password</Text>
+            <View
+              style={[
+                styles.inputWrapper,
+                activeInput === 'password' ? styles.inputWrapperFocused : null,
+              ]}
+            >
+              <Ionicons
+                name="lock-closed-outline"
+                size={18}
+                color={activeInput === 'password' ? COLORS.primary : COLORS.textSecondary}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                ref={passwordRef}
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="••••••••"
+                placeholderTextColor={COLORS.textMuted}
+                secureTextEntry
+                autoComplete="current-password"
+                editable={!isLoading}
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+                onFocus={() => setActiveInput('password')}
+                onBlur={() => setActiveInput(null)}
+                accessibilityLabel="Password"
+              />
+            </View>
+          </View>
 
-            {/* Biometric */}
-            {biometricAvailable && (
-              <Pressable
-                style={styles.biometricButton}
-                onPress={handleBiometric}
-                disabled={isLoading}
-                accessibilityRole="button"
-                accessibilityLabel="Sign in with biometrics"
-                accessibilityState={{ disabled: isLoading }}
-              >
-                <Ionicons name="finger-print" size={20} color={COLORS.text} />
-                <Text style={styles.biometricButtonText}>  Sign in with Biometrics</Text>
-              </Pressable>
-            )}
-
-            {/* Google Sign-In */}
-            <GoogleSignInButton
-              onSuccess={() => {}}
-              onError={(err) => setError(err.message)}
-            />
-
-            {/* Apple Sign-In */}
-            <AppleSignInButton
-              onSuccess={() => {}}
-              onError={(err) => setError(err.message)}
-            />
-
-            {/* Register link */}
+          {/* ── Sign In button ────────────────────────────────────────────── */}
+          <Animated.View style={btnAnimStyle}>
             <Pressable
-              style={styles.registerLink}
-              onPress={() => navigation.navigate('Register')}
+              style={[styles.loginButton, isLoading ? styles.buttonDisabled : null]}
+              onPress={handleLogin}
+              onPressIn={() => { btnScale.value = withSpring(0.96); }}
+              onPressOut={() => { btnScale.value = withSpring(1); }}
               disabled={isLoading}
               accessibilityRole="button"
-              accessibilityLabel="Go to Register"
+              accessibilityLabel="Sign in"
+              accessibilityState={{ disabled: isLoading }}
             >
-              <Text style={styles.registerLinkText}>
-                Don't have an account?{' '}
-                <Text style={styles.registerLinkHighlight}>Register</Text>
-              </Text>
+              <LinearGradient
+                colors={COLORS.gradientBuy}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.loginGradient}
+              >
+                {isLoading
+                  ? <ActivityIndicator color="#FFFFFF" />
+                  : <Text style={styles.loginButtonText}>Sign In</Text>
+                }
+              </LinearGradient>
             </Pressable>
+          </Animated.View>
+
+          {/* ── Biometric (only when available) ──────────────────────────── */}
+          {biometricAvailable ? (
+            <Pressable
+              style={styles.biometricButton}
+              onPress={handleBiometric}
+              disabled={isLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in with biometrics"
+              accessibilityState={{ disabled: isLoading }}
+            >
+              <Ionicons name="finger-print" size={20} color={COLORS.text} />
+              <Text style={styles.biometricButtonText}>  Sign in with Biometrics</Text>
+            </Pressable>
+          ) : null}
+
+          {/* ── Divider ───────────────────────────────────────────────────── */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
           </View>
+
+          {/* ── Register link ─────────────────────────────────────────────── */}
+          <Pressable
+            style={styles.registerLink}
+            onPress={() => navigation.navigate('Register')}
+            disabled={isLoading}
+            accessibilityRole="button"
+            accessibilityLabel="Create a new account"
+          >
+            <Text style={styles.registerLinkText}>
+              {"Don't have an account?  "}
+              <Text style={styles.registerLinkHighlight}>Create Account</Text>
+            </Text>
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
   );
 };
 
+// ── Styles ────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: { flex: 1 },
+  flex:          { flex: 1 },
+  container:     { flex: 1 },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: SPACING.md,
@@ -312,11 +337,8 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xl,
     justifyContent: 'center',
   },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  logoGradient: {
+  logoContainer: { alignItems: 'center', marginBottom: 40 },
+  logoGradient:  {
     width: 72,
     height: 72,
     borderRadius: 22,
@@ -330,10 +352,7 @@ const styles = StyleSheet.create({
     fontWeight: FONTS.weights.extrabold,
     marginBottom: 4,
   },
-  subtitle: {
-    color: COLORS.textSecondary,
-    fontSize: FONTS.sizes.md,
-  },
+  subtitle: { color: COLORS.textSecondary, fontSize: FONTS.sizes.md },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -344,20 +363,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.error,
   },
-  errorText: {
-    color: COLORS.error,
-    fontSize: FONTS.sizes.sm,
-  },
+  errorText: { color: COLORS.error, fontSize: FONTS.sizes.sm, flex: 1 },
   attemptsWarning: {
     color: COLORS.warning,
     fontSize: FONTS.sizes.sm,
     textAlign: 'center',
     marginBottom: 12,
   },
-  inputGroup: {
-    marginBottom: SPACING.md,
-  },
-  inputLabel: {
+  inputGroup:  { marginBottom: SPACING.md },
+  inputLabel:  {
     color: COLORS.textSecondary,
     fontSize: FONTS.sizes.sm,
     marginBottom: 6,
@@ -372,14 +386,9 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     height: 52,
   },
-  // Clean border focus highlight with zero shadow/elevation toggling
-  inputWrapperFocused: {
-    borderColor: COLORS.primary,
-  },
-  inputIcon: {
-    paddingLeft: 14,
-    paddingRight: 2,
-  },
+  inputWrapperFocused: { borderColor: COLORS.primary },
+  inputWrapperError:   { borderColor: COLORS.error },
+  inputIcon: { paddingLeft: 14, paddingRight: 2 },
   input: {
     flex: 1,
     color: COLORS.text,
@@ -388,22 +397,16 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     height: '100%',
   },
-  loginButton: {
-    borderRadius: RADIUS.md,
-    overflow: 'hidden',
-    marginTop: 8,
-    marginBottom: 12,
+  fieldError: {
+    color: COLORS.error,
+    fontSize: FONTS.sizes.xs,
+    marginTop: 4,
+    marginLeft: 4,
   },
-  loginGradient: {
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  buttonDisabled: { opacity: 0.6 },
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: FONTS.sizes.md,
-    fontWeight: FONTS.weights.bold,
-  },
+  loginButton:     { borderRadius: RADIUS.md, overflow: 'hidden', marginTop: 8, marginBottom: 12 },
+  loginGradient:   { paddingVertical: 16, alignItems: 'center' },
+  buttonDisabled:  { opacity: 0.6 },
+  loginButtonText: { color: '#FFFFFF', fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.bold },
   biometricButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -414,23 +417,18 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     marginBottom: 12,
   },
-  biometricButtonText: {
-    color: COLORS.text,
-    fontSize: FONTS.sizes.md,
-    fontWeight: FONTS.weights.medium,
-  },
-  registerLink: {
-    paddingVertical: 12,
+  biometricButtonText: { color: COLORS.text, fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.medium },
+  divider: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginVertical: 16,
+    gap: 10,
   },
-  registerLinkText: {
-    color: COLORS.textSecondary,
-    fontSize: FONTS.sizes.sm,
-  },
-  registerLinkHighlight: {
-    color: COLORS.primary,
-    fontWeight: FONTS.weights.semibold,
-  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
+  dividerText: { color: COLORS.textMuted, fontSize: FONTS.sizes.sm },
+  registerLink:          { paddingVertical: 12, alignItems: 'center' },
+  registerLinkText:      { color: COLORS.textSecondary, fontSize: FONTS.sizes.sm },
+  registerLinkHighlight: { color: COLORS.primary, fontWeight: FONTS.weights.semibold },
   lockoutCard: {
     backgroundColor: COLORS.bgCard,
     borderRadius: RADIUS.lg,
@@ -442,20 +440,7 @@ const styles = StyleSheet.create({
     marginBottom: 'auto',
     width: '90%',
   },
-  lockIcon: {
-    marginBottom: 12,
-  },
-  lockoutTitle: {
-    color: COLORS.error,
-    fontSize: FONTS.sizes.xl,
-    fontWeight: FONTS.weights.bold,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  lockoutMessage: {
-    color: COLORS.text,
-    fontSize: FONTS.sizes.md,
-    lineHeight: 22,
-    textAlign: 'center',
-  },
+  lockIcon:       { marginBottom: 12 },
+  lockoutTitle:   { color: COLORS.error, fontSize: FONTS.sizes.xl, fontWeight: FONTS.weights.bold, marginBottom: 12, textAlign: 'center' },
+  lockoutMessage: { color: COLORS.text, fontSize: FONTS.sizes.md, lineHeight: 22, textAlign: 'center' },
 });

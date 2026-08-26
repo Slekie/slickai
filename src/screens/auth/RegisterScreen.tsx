@@ -17,6 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { COLORS, FONTS, RADIUS, SPACING } from '../../theme';
@@ -34,6 +35,7 @@ type ActiveField = 'email' | 'password' | 'confirm' | null;
 
 export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const { register, isLoading } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -104,11 +106,22 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
       >
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
+          {/* Back button */}
+          <Pressable
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            disabled={isLoading}
+            accessibilityRole="button"
+            accessibilityLabel="Go back to Sign In"
+          >
+            <Ionicons name="arrow-back" size={22} color={COLORS.text} />
+          </Pressable>
+
           <View>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>Join Slick AI Trading Platform</Text>
@@ -259,7 +272,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: SPACING.md,
-    paddingTop: 60,
+    paddingTop: 16,  // overridden at render time with safe-area inset
     paddingBottom: SPACING.xl,
     justifyContent: 'center',
   },
@@ -347,6 +360,14 @@ const styles = StyleSheet.create({
   loginLinkText: {
     color: COLORS.textSecondary,
     fontSize: FONTS.sizes.sm,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    marginLeft: -4,
   },
   loginLinkHighlight: {
     color: COLORS.primary,

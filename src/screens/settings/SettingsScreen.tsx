@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import * as SecureStore from 'expo-secure-store';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAccountStore } from '../../store/accountStore';
 import { useAuthStore } from '../../store/authStore';
 import { accountService } from '../../services/accountService';
@@ -133,6 +134,7 @@ const ModeConfirmModal: React.FC<ModeConfirmModalProps> = ({
 
 export const SettingsScreen: React.FC = () => {
   const { accounts, setSubscriptionMode } = useAccountStore();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const { logout } = useAuth();
 
@@ -206,7 +208,7 @@ export const SettingsScreen: React.FC = () => {
   const initials = user?.email?.charAt(0).toUpperCase() ?? 'U';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top }]}>
       <Text style={styles.screenTitle}>Settings</Text>
 
       {/* Profile section */}
@@ -362,7 +364,7 @@ const styles = StyleSheet.create({
     fontSize: FONTS.sizes['3xl'],
     fontWeight: FONTS.weights.extrabold,
     paddingHorizontal: SPACING.md,
-    paddingTop: 20,
+    paddingTop: 12,
     paddingBottom: 20,
   },
   profileCard: {

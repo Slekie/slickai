@@ -13,6 +13,7 @@ import Animated, {
   useAnimatedStyle,
   interpolate,
   Extrapolation,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,7 +26,7 @@ const ONBOARDING_KEY = 'slickai_onboarding_done';
 interface Slide {
   id: string;
   icon: string;
-  iconBg: string[];
+  iconBg: [string, string, ...string[]];
   title: string;
   subtitle: string;
   points: string[];
@@ -73,7 +74,7 @@ const SLIDES: Slide[] = [
 interface SlideViewProps {
   slide: Slide;
   index: number;
-  scrollX: Animated.SharedValue<number>;
+  scrollX: SharedValue<number>;
 }
 
 const SlideView: React.FC<SlideViewProps> = ({ slide, index, scrollX }) => {

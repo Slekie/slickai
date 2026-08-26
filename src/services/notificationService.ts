@@ -151,7 +151,7 @@ class NotificationService {
   ): (() => void) | null {
     try {
       const Notifications = require('expo-notifications') as typeof import('expo-notifications');
-      const subscription = Notifications.addNotificationResponseListener(handler);
+      const subscription = Notifications.addNotificationResponseReceivedListener(handler);
       return () => subscription.remove();
     } catch {
       return null;
