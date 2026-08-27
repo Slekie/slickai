@@ -19,6 +19,7 @@ import { LiveDot } from '../../components/LiveDot';
 import { useSignalStore } from '../../store/signalStore';
 import { useAccountStore } from '../../store/accountStore';
 import { signalService } from '../../services/signalService';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, FONTS, RADIUS, SPACING } from '../../theme';
 import type { Signal } from '../../store/signalStore';
 
@@ -26,6 +27,7 @@ type FilterType = 'All' | 'BUY' | 'SELL' | 'Active';
 const FILTERS: FilterType[] = ['All', 'BUY', 'SELL', 'Active'];
 
 export const SignalsScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const { signals, setSignals, markExpiredSignals, isLoading, setLoading, setError, error } =
     useSignalStore();
   const { accounts } = useAccountStore();
@@ -90,7 +92,7 @@ export const SignalsScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <Animated.View style={[styles.headerRow, headerAnimStyle]}>
+      <Animated.View style={[styles.headerRow, headerAnimStyle, { paddingTop: insets.top + 8 }]}>
         <View>
           <Text style={styles.screenTitle}>Signals</Text>
           {activeCount > 0 && (
@@ -165,7 +167,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     paddingHorizontal: SPACING.md,
-    paddingTop: 20,
+    paddingTop: 12,
     paddingBottom: 8,
   },
   screenTitle: {

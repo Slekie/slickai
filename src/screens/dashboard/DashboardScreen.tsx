@@ -26,6 +26,7 @@ import { tradeService } from '../../services/tradeService';
 import { useAccountStore } from '../../store/accountStore';
 import { useAuthStore } from '../../store/authStore';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, FONTS, RADIUS, SPACING } from '../../theme';
 
 type Period = '1D' | '7D' | '30D' | 'ALL';
@@ -52,6 +53,7 @@ export const DashboardScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const { isConnected: wsConnected } = useWebSocket();
 
+  const insets = useSafeAreaInsets();
   const hasAutomatedAccount = accounts.some((a) => a.subscriptionMode === 'automated_trading');
 
   // Header animation
@@ -119,8 +121,8 @@ export const DashboardScreen: React.FC = () => {
 
   const greeting = (): string => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
+    if (hour >= 5 && hour < 12) return 'Good morning';
+    if (hour >= 12 && hour < 18) return 'Good afternoon';
     return 'Good evening';
   };
 
@@ -129,7 +131,7 @@ export const DashboardScreen: React.FC = () => {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 8 }]}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}

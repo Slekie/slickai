@@ -24,6 +24,7 @@ import { authService } from '../../services/authService';
 import { COLORS, FONTS, RADIUS, SPACING } from '../../theme';
 
 type AuthStackParamList = {
+  Welcome: undefined;
   Login: undefined;
   Register: undefined;
 };

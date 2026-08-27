@@ -17,6 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { tradeService } from '../../services/tradeService';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, FONTS, RADIUS, SPACING } from '../../theme';
 import { SkeletonCard } from '../../components/SkeletonCard';
 import type { Trade } from '../../store/tradeStore';
@@ -122,6 +123,7 @@ const TradeHistoryCard: React.FC<TradeHistoryCardProps> = ({ trade, index }) => 
 };
 
 export const TradeHistoryScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -167,7 +169,7 @@ export const TradeHistoryScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.screenTitle}>Trade History</Text>
       </View>
 
@@ -263,7 +265,7 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     paddingHorizontal: SPACING.md,
-    paddingTop: 20,
+    paddingTop: 12,
     paddingBottom: 12,
   },
   screenTitle: {

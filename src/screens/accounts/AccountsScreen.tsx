@@ -22,6 +22,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAccountStore } from '../../store/accountStore';
 import { accountService } from '../../services/accountService';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, FONTS, RADIUS, SPACING } from '../../theme';
 import type { ConnectedAccount } from '../../store/accountStore';
 import type { SupportedBroker, ConnectAccountPayload, DerivAccount } from '../../services/accountService';
@@ -135,6 +136,7 @@ const AccountCard: React.FC<AccountCardProps> = ({ item, index, onDelete }) => {
 };
 
 export const AccountsScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const { accounts, setAccounts, addAccount, removeAccount, isLoading, setLoading, setError, error } =
     useAccountStore();
 
@@ -295,7 +297,7 @@ export const AccountsScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.screenTitle}>Accounts</Text>
         <Pressable style={styles.addButton} onPress={() => { resetModal(); setModalVisible(true); }}
           accessibilityRole="button"
@@ -554,7 +556,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: SPACING.md,
-    paddingTop: 20,
+    paddingTop: 12,
     paddingBottom: 12,
   },
   screenTitle: {
