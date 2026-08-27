@@ -1,50 +1,89 @@
-name: Test and EAS Android Build
+﻿name: Android — Debug APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, master, develop]
   pull_request:
-    branches: [main]
+    branches: [main, master]
+  workflow_dispatch:
 
 jobs:
-  test-and-build:
+  build:
+    name: Build Debug APK
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
 
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          cache: "npm"
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
-
-      - name: Run tests
-        run: npm test -- --passWithNoTests --forceExit
-
-      - name: Set up Expo / EAS CLI
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Trigger EAS development build (Android)
-        run: eas build --platform android --profile development --non-interactive
+        run: npm install --legacy-peer-deps
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          NPM_CONFIG_CACHE: /tmp/npm-cache
 
-      - name: Comment EAS build link on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+      # expo prebuild generates android/ from app.json + plugins
+      - name: Expo prebuild
+        run: node node_modules/expo/bin/cli prebuild --platform android --clean --no-install
+        env:
+          EXPO_PUBLIC_API_BASE_URL: https://saita-backend.onrender.com
+          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: ''
+          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ''
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ''
+          EXPO_NO_INTERACTIVE: '1'
+          CI: '1'
+
+      - name: Make gradlew executable
+        working-directory: android
+        run: chmod +x gradlew
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
         with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: "EAS build triggered. Check https://expo.dev/accounts/slickai/projects/slickai/builds"
-            })
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      # Gradle runs expo export:embed + hermesc in one integrated step.
+      # EXPO_OVERRIDE_METRO_CONFIG forces Metro to load metro.config.js from the
+      # project root, preventing it from climbing up to a parent directory.
+      # debuggableVariants = [] in app/build.gradle ensures the JS bundle is
+      # always embedded — never loaded from a Metro dev server at runtime.
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+        env:
+          EXPO_PUBLIC_API_BASE_URL: https://saita-backend.onrender.com
+          NODE_ENV: production
+          EXPO_OVERRIDE_METRO_CONFIG: ${{ github.workspace }}/metro.config.js
+          NODE_PATH: ${{ github.workspace }}/node_modules
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: slick-ai-debug-${{ github.sha }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+      - name: Build summary
+        run: |
+          echo "## Slick AI Debug Build" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ github.ref_name }}\`  |  **Commit:** \`${GITHUB_SHA:0:8}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download the APK from **Artifacts** above." >> $GITHUB_STEP_SUMMARY
+          echo "Install: enable _Unknown Sources_ on your phone, transfer and tap the APK." >> $GITHUB_STEP_SUMMARY
