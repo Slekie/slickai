@@ -1,20 +1,46 @@
-﻿const { withAppBuildGradle } = require('@expo/config-plugins');
+﻿/**
+ * withAndroidBundleConfig.js
+ *
+ * Expo config plugin that patches android/app/build.gradle after expo prebuild:
+ *
+ *  1. Sets bundleCommand = "export:embed" so Gradle uses the Expo CLI bundler.
+ *  2. Removes the BUNDLE_SKIP conditional (no longer needed).
+ *  3. Sets debuggableVariants = [] so the JS bundle is ALWAYS embedded in the
+ *     APK — never loaded from a Metro dev server at runtime.
+ *     Without this, installing a debug APK on a physical device shows:
+ *     "Unable to load script. Make sure you are running a Metro server."
+ *
+ * Strategy: find the closing brace of the react {} block and insert the two
+ * settings just before it. This is resilient to Expo template changes.
+ */
+const { withAppBuildGradle } = require('@expo/config-plugins');
 
 module.exports = function withAndroidBundleConfig(config) {
   return withAppBuildGradle(config, (mod) => {
     let gradle = mod.modResults.contents;
 
-    // 1. Add bundleCommand = "export:embed" after cliFile line if missing
+    // ── Step 1: ensure bundleCommand is set ─────────────────────────────────
     if (!gradle.includes('bundleCommand')) {
-      gradle = gradle.replace(/(cliFile\s*=.*\n)/, '$1    bundleCommand = "export:embed"\n');
+      // Insert after the autolinkLibrariesWithApp() call inside react {}
+      gradle = gradle.replace(
+        /(autolinkLibrariesWithApp\(\))/,
+        'bundleCommand = "export:embed"\n    ',
+      );
     }
 
-    // 2. Remove BUNDLE_SKIP conditional block if present
-    gradle = gradle.replace(/\/\/ When BUNDLE_SKIP[\s\S]*?}\s*\n/, '');
+    // ── Step 2: remove legacy BUNDLE_SKIP block if present ──────────────────
+    gradle = gradle.replace(
+      /\/\/ When BUNDLE_SKIP[^}]*\{[^}]*\}\s*/g,
+      '',
+    );
 
-    // 3. Add debuggableVariants = [] unconditionally if missing
+    // ── Step 3: ensure debuggableVariants = [] is set ───────────────────────
     if (!gradle.includes('debuggableVariants')) {
-      gradle = gradle.replace(/(bundleCommand\s*=.*\n)/, '$1\n    // Always embed JS bundle in every build variant\n    debuggableVariants = []\n');
+      // Insert just before autolinkLibrariesWithApp() which is always last in react {}
+      gradle = gradle.replace(
+        /(autolinkLibrariesWithApp\(\))/,
+        '// Always embed JS bundle — never load from Metro dev server\n    debuggableVariants = []\n\n    ',
+      );
     }
 
     mod.modResults.contents = gradle;
