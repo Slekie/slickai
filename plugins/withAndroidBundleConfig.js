@@ -35,7 +35,9 @@ module.exports = function withAndroidBundleConfig(config) {
     );
 
     // ── Step 3: ensure debuggableVariants = [] is set ───────────────────────
-    if (!gradle.includes('debuggableVariants')) {
+    // Check for an active (non-commented) debuggableVariants assignment
+    const hasActiveDebug = /^\s*debuggableVariants\s*=/.test(gradle.split('\n').filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*')).join('\n'));
+    if (!hasActiveDebug) {
       // Insert just before autolinkLibrariesWithApp() which is always last in react {}
       gradle = gradle.replace(
         /(autolinkLibrariesWithApp\(\))/,

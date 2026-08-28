@@ -17,9 +17,10 @@ export const signalService = {
     offset?: number;
     status?: string;
   }): Promise<Signal[]> => {
-    const response = await apiClient.get<Signal[]>(ENDPOINTS.signals.list, {
-      params,
-    });
-    return response.data;
+    const response = await apiClient.get<{ signals: Signal[]; total: number }>(
+      ENDPOINTS.signals.list,
+      { params },
+    );
+    return response.data.signals ?? [];
   },
 };

@@ -45,9 +45,10 @@ export const useSignalStore = create<SignalState>((set, get) => ({
     )}),
 
   addSignal: (signal) =>
-    set((state) => ({
-      signals: [signal, ...state.signals],
-    })),
+    set((state) => {
+      if (state.signals.some((s) => s.signalId === signal.signalId)) return state;
+      return { signals: [signal, ...state.signals] };
+    }),
 
   updateSignal: (signalId, updates) =>
     set((state) => ({
