@@ -1,47 +1,48 @@
-﻿{
-    "expo":  {
-                 "name":  "slickai",
-                 "slug":  "slickai",
-                 "version":  "1.0.0",
-                 "scheme":  "slickai",
-                 "orientation":  "portrait",
-                 "icon":  "./assets/icon.png",
-                 "userInterfaceStyle":  "light",
-                 "newArchEnabled":  true,
-                 "updates":  {
-                                 "enabled":  false
-                             },
-                 "splash":  {
-                                "image":  "./assets/splash-icon.png",
-                                "resizeMode":  "contain",
-                                "backgroundColor":  "#ffffff"
-                            },
-                 "ios":  {
-                             "supportsTablet":  true,
-                             "bundleIdentifier":  "com.slickai.app"
-                         },
-                 "android":  {
-                                 "adaptiveIcon":  {
-                                                      "foregroundImage":  "./assets/adaptive-icon.png",
-                                                      "backgroundColor":  "#ffffff"
-                                                  },
-                                 "edgeToEdgeEnabled":  true,
-                                 "predictiveBackGestureEnabled":  false,
-                                 "softwareKeyboardLayoutMode":  "pan",
-                                 "package":  "com.slickai.app"
-                             },
-                 "web":  {
-                             "favicon":  "./assets/favicon.png"
-                         },
-                 "plugins":  [
-                                 "expo-secure-store",
-                                 "./plugins/withAndroidBundleConfig"
-                             ],
-                 "extra":  {
-                               "eas":  {
-                                           "projectId":  "20249abc-4ea5-44d9-8d96-52ab0f75fe9e"
-                                       }
-                           },
-                 "owner":  "slickai"
-             }
+{
+  "expo": {
+    "name": "slickai",
+    "slug": "slickai",
+    "version": "1.0.0",
+    "scheme": "slickai",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "updates": {
+      "enabled": false
+    },
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.slickai.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "pan",
+      "package": "com.slickai.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "./plugins/withSecureStoreXml",
+      "./plugins/withAndroidBundleConfig"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "20249abc-4ea5-44d9-8d96-52ab0f75fe9e"
+      }
+    },
+    "owner": "slickai"
+  }
 }
