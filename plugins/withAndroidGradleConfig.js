@@ -1,12 +1,13 @@
 /**
  * withAndroidGradleConfig.js
  *
- * Expo config plugin that patches the top-level android/build.gradle to:
- * 1. Pin Kotlin Gradle plugin to 2.1.20 (required by react-native 0.81).
- *    Without a pinned version, Gradle resolves a mismatched version that
- *    causes: Execution failed for task ':app:compileDebugKotlin'
- * 2. Set org.gradle.warning.mode=summary in gradle.properties so
- *    deprecation warnings are logged but do not cause a hard build failure.
+ * Expo config plugin that:
+ * 1. Pins kotlin-gradle-plugin to 2.1.20 in android/build.gradle
+ * 2. Adds gradle.properties entries to fix Kotlin 2.1.x compiler worker
+ *    crashes on CI (GradleCompilerRunnerWithWorkers crashing):
+ *    - kotlin.daemon.jvm.options with --add-opens flags
+ *    - sufficient heap for the Kotlin daemon
+ *    - org.gradle.warning.mode=summary (deprecation warnings don't fail build)
  */
 const { withProjectBuildGradle, withGradleProperties } = require('@expo/config-plugins');
 
@@ -34,13 +35,36 @@ module.exports = function withAndroidGradleConfig(config) {
     return mod;
   });
 
-  // Step 2 -- set warning mode so deprecation warnings don't fail the build
+  // Step 2 -- add gradle.properties entries needed for Kotlin 2.1.x on CI
   config = withGradleProperties(config, (mod) => {
-    const filtered = mod.modResults.filter(
-      (item) => !(item.type === 'property' && item.key === 'org.gradle.warning.mode')
+    const toSet = {
+      // Suppress deprecation warnings as hard failures
+      'org.gradle.warning.mode': 'summary',
+      // Extra heap for Gradle daemon on CI (2GB)
+      'org.gradle.jvmargs': '-Xmx2g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8',
+      // Kotlin daemon JVM flags required by Kotlin 2.1.x with Java 17/21
+      // These open internal JDK modules that the Kotlin compiler worker needs
+      'kotlin.daemon.jvm.options':
+        '-Xmx2g -XX:MaxMetaspaceSize=512m' +
+        ' --add-opens=java.base/java.util=ALL-UNNAMED' +
+        ' --add-opens=java.base/java.lang=ALL-UNNAMED',
+      // Limit parallel workers on CI to avoid OOM
+      'org.gradle.workers.max': '2',
+      // Keep incremental compilation off on CI (clean builds only)
+      'kotlin.incremental': 'false',
+    };
+
+    // Remove any existing entries for the keys we are setting
+    let props = mod.modResults.filter(
+      (item) => !(item.type === 'property' && Object.keys(toSet).includes(item.key))
     );
-    filtered.push({ type: 'property', key: 'org.gradle.warning.mode', value: 'summary' });
-    mod.modResults = filtered;
+
+    // Add our entries
+    for (const [key, value] of Object.entries(toSet)) {
+      props.push({ type: 'property', key, value });
+    }
+
+    mod.modResults = props;
     return mod;
   });
 
