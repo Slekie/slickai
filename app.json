@@ -35,6 +35,7 @@
     },
     "plugins": [
       "expo-secure-store",
+      "./plugins/withAndroidGradleConfig",
       "./plugins/withSecureStoreXml",
       "./plugins/withAndroidBundleConfig"
     ],
