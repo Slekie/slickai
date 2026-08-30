@@ -1,4 +1,4 @@
-import { createAuthenticatedClient } from './apiClient';
+﻿import { createAuthenticatedClient } from './apiClient';
 import { API_BASE_URL, ENDPOINTS } from '../config/api';
 import type { ConnectedAccount, SubscriptionMode } from '../store/accountStore';
 
@@ -53,12 +53,12 @@ export const accountService = {
   connectAccount: async (
     payload: ConnectAccountPayload
   ): Promise<ConnectedAccount> => {
-    const response = await apiClient.post<ConnectedAccount>(
+    const response = await apiClient.post<{ success: boolean; account: ConnectedAccount; message: string }>(
       ENDPOINTS.accounts.connect,
       payload,
       { timeout: 15_000 },
     );
-    return response.data;
+    return response.data.account;
   },
 
   /**

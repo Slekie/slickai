@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
+﻿import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -93,7 +92,7 @@ const AccountCard: React.FC<AccountCardProps> = ({ item, index, onDelete }) => {
         <View style={styles.accountContent}>
           <View style={styles.accountHeader}>
             <View>
-              <Text style={styles.brokerName}>{item.broker.toUpperCase()}</Text>
+              <Text style={styles.brokerName}>{(item.broker ?? 'UNKNOWN').toUpperCase()}</Text>
               <Text style={styles.balanceText}>
                 {item.balance} {item.currency}
               </Text>
@@ -123,7 +122,7 @@ const AccountCard: React.FC<AccountCardProps> = ({ item, index, onDelete }) => {
             style={styles.deleteButton}
             onPress={() => onDelete(item)}
             accessibilityRole="button"
-            accessibilityLabel={`Disconnect ${item.broker.toUpperCase()} account`}
+            accessibilityLabel={`Disconnect ${(item.broker ?? 'UNKNOWN').toUpperCase()} account`}
             accessibilityHint="Disconnects this broker account and stops all signals and trades"
           >
             <Ionicons name="unlink-outline" size={14} color={COLORS.error} />
@@ -274,7 +273,7 @@ export const AccountsScreen: React.FC = () => {
     (account: ConnectedAccount) => {
       Alert.alert(
         'Disconnect Account',
-        `Disconnect ${account.broker.toUpperCase()} account? This stops all signals and trades.`,
+        `Disconnect ${(account.broker ?? 'this').toUpperCase()} account? This stops all signals and trades.`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -373,7 +372,7 @@ export const AccountsScreen: React.FC = () => {
             {step === 'credentials' && (
               <>
                 <Text style={styles.inputLabel}>Select Broker</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.brokerSelector}>
+                <View style={[styles.brokerSelector, { flexDirection: 'row', flexWrap: 'wrap' }]}>
                   {BROKERS.map((b) => (
                     <Pressable
                       key={b.value}
@@ -393,7 +392,7 @@ export const AccountsScreen: React.FC = () => {
                       </Text>
                     </Pressable>
                   ))}
-                </ScrollView>
+                </View>
 
                 {selectedBroker === 'deriv' ? (
                   <>
