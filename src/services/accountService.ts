@@ -28,10 +28,10 @@ export const accountService = {
    * Fetch all connected accounts for the authenticated user.
    */
   getAccounts: async (): Promise<ConnectedAccount[]> => {
-    const response = await apiClient.get<ConnectedAccount[]>(
+    const response = await apiClient.get<{ success: boolean; accounts: ConnectedAccount[]; total: number }>(
       ENDPOINTS.accounts.list
     );
-    return response.data;
+    return response.data.accounts ?? [];
   },
 
   /**
