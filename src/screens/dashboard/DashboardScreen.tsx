@@ -25,7 +25,6 @@ import { useTradeStore } from '../../store/tradeStore';
 import { tradeService } from '../../services/tradeService';
 import { useAccountStore } from '../../store/accountStore';
 import { useAuthStore } from '../../store/authStore';
-import { useWebSocket } from '../../hooks/useWebSocket';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, FONTS, RADIUS, SPACING } from '../../theme';
 
@@ -51,7 +50,6 @@ export const DashboardScreen: React.FC = () => {
   const [equityData, setEquityData] = useState<{ timestamp: string; equity: number }[]>([]);
   const [equityLoading, setEquityLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const { isConnected: wsConnected } = useWebSocket();
 
   const insets = useSafeAreaInsets();
   const hasAutomatedAccount = accounts.some((a) => a.subscriptionMode === 'automated_trading');

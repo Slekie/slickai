@@ -44,8 +44,8 @@ export const ENDPOINTS = {
   },
 
   performance: {
-    positions: '/trades/open',
-    summary:   '/trades/performance',
+    positions: '/performance/positions',
+    summary:   '/performance/summary',
     equity:    '/trades/equity',
   },
 

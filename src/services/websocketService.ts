@@ -74,16 +74,19 @@ class WebSocketService {
     this._notifyConnectionListeners(false);
   }
 
-  /**
-   * Pause reconnection attempts (e.g. when app goes to background).
-   * Preserves the socket instance — does NOT disconnect.
-   */
+  /** Pause real-time traffic while the app is in the background. */
   pauseReconnect(): void {
     this.shouldBeConnected = false;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+    this.isConnecting = false;
+    this._notifyConnectionListeners(false);
   }
 
   /**

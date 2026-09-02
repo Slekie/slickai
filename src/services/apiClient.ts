@@ -25,6 +25,29 @@ declare module 'axios' {
 
 const SECURE_STORE_REFRESH_KEY = 'SlickAI_refresh_token';
 const SECURE_STORE_TOKEN_KEY   = 'SlickAI_auth_token';
+let refreshPromise: Promise<string> | null = null;
+
+async function refreshAccessToken(baseURL: string): Promise<string> {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const refreshToken = await SecureStore.getItemAsync(SECURE_STORE_REFRESH_KEY);
+      if (!refreshToken) throw new Error('No refresh token available');
+
+      const response = await axios.post<{ token?: string; access_token?: string }>(
+        `${baseURL}${ENDPOINTS.auth.refresh}`,
+        { refresh_token: refreshToken },
+        { timeout: API_TIMEOUT_MS },
+      );
+      const newToken = response.data.access_token ?? response.data.token;
+      if (!newToken) throw new Error('Refresh response did not contain an access token');
+      await SecureStore.setItemAsync(SECURE_STORE_TOKEN_KEY, newToken);
+      return newToken;
+    })().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
 
 /**
  * Create an Axios instance with:
@@ -63,23 +86,9 @@ export function createAuthenticatedClient(
       originalRequest._isRetry = true;
 
       try {
-        // Read refresh token directly from SecureStore to avoid circular imports
-        const refreshToken = await SecureStore.getItemAsync(SECURE_STORE_REFRESH_KEY);
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
-        }
+        const newToken = await refreshAccessToken(baseURL);
 
-        // Exchange refresh token for new access token
-        const refreshResponse = await axios.post<{ token: string; access_token?: string }>(
-          `${baseURL}${ENDPOINTS.auth.refresh}`,
-          { refresh_token: refreshToken },
-          { timeout: API_TIMEOUT_MS },
-        );
-
-        const newToken = refreshResponse.data.access_token ?? refreshResponse.data.token;
-
-        // Persist new token and update auth store
-        await SecureStore.setItemAsync(SECURE_STORE_TOKEN_KEY, newToken);
+        // Update auth store after the shared refresh completes.
         // Dynamically import authStore to avoid circular dep at module level
         const { useAuthStore } = await import('../store/authStore');
         const state = useAuthStore.getState();
