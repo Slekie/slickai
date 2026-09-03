@@ -7,7 +7,7 @@
  *    crashes on CI (GradleCompilerRunnerWithWorkers crashing):
  *    - kotlin.daemon.jvm.options with --add-opens flags
  *    - sufficient heap for the Kotlin daemon
- *    - org.gradle.warning.mode=summary (deprecation warnings don't fail build)
+ *    - org.gradle.warning.mode=summary (keeps CI output readable)
  */
 const { withProjectBuildGradle, withGradleProperties } = require('@expo/config-plugins');
 
@@ -38,7 +38,7 @@ module.exports = function withAndroidGradleConfig(config) {
   // Step 2 -- add gradle.properties entries needed for Kotlin 2.1.x on CI
   config = withGradleProperties(config, (mod) => {
     const toSet = {
-      // Suppress deprecation warnings as hard failures
+      // Keep Gradle deprecation output concise while dependencies migrate.
       'org.gradle.warning.mode': 'summary',
       // Extra heap for Gradle daemon on CI (2GB)
       'org.gradle.jvmargs': '-Xmx2g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8',
@@ -56,7 +56,9 @@ module.exports = function withAndroidGradleConfig(config) {
 
     // Remove any existing entries for the keys we are setting
     let props = mod.modResults.filter(
-      (item) => !(item.type === 'property' && Object.keys(toSet).includes(item.key))
+      (item) => !(item.type === 'property' && (
+        Object.keys(toSet).includes(item.key) || item.key === 'expo.edgeToEdgeEnabled'
+      ))
     );
 
     // Add our entries
