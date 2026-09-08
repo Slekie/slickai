@@ -12,8 +12,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { subscriptionService } from "../../services/subscriptionService";
 import type { PurchasesPackage, PurchasesOfferings } from "../../services/subscriptionService";
+import { useAuth } from "../../hooks/useAuth";
 import { useSubscriptionStore } from "../../store/subscriptionStore";
-import { useAuthStore } from "../../store/authStore";
 import { SkeletonCard } from "../../components/SkeletonCard";
 import { COLORS, FONTS, RADIUS, SPACING } from "../../theme";
 
@@ -75,7 +75,7 @@ interface PaywallScreenProps { onSkip?: () => void; }
 
 export const PaywallScreen: React.FC<PaywallScreenProps> = ({ onSkip }) => {
   const { setSubscription } = useSubscriptionStore();
-  const { logout } = useAuthStore();
+  const { logout } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [isLoadingOfferings, setIsLoadingOfferings] = useState(true);

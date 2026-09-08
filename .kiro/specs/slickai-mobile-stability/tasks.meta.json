@@ -1,0 +1,137 @@
+{
+  "pbtResults": {
+    "1. Write bug condition exploration tests (BEFORE implementing fixes)": {
+      "status": "passed",
+      "failingExample": "Bug 1 counterexample: DashboardScreen.tsx references wsConnected in JSX at line ~148 ({wsConnected && (...)}) but useWebSocket() is never called anywhere in the component body. TypeScript confirms: TS2304 Cannot find name 'wsConnected' in DashboardScreen.tsx. At runtime, every render path crashes with ReferenceError: wsConnected is not defined.\n\nBug 2 counterexample: after useAuthStore().logout() — the bare store logout used by the unfixed PaywallScreen:\n  - subscriptionStore.isSubscribed === true  (expected: false)\n  - tradeStore.openPositions contains trade-a1  (expected: [])\n  - accountStore.accounts contains user-a's account  (expected: [])\n  - signalStore.signals contains sig-a1  (expected: [])\n  - websocketService.disconnect() was NEVER called  (expected: called once)\n  - After second user logs in: user-b sees all of user-a's stale data across all 4 stores",
+      "lastRunTimestamp": 1788857467184
+    }
+  },
+  "executionHistory": {
+    "1. Write bug condition exploration tests (BEFORE implementing fixes)": [
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788856291475
+      },
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788856307198
+      },
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788858463025
+      }
+    ],
+    "2. Write preservation property tests (BEFORE implementing fixes)": [
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788856291967
+      },
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788856309045
+      },
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788858463531
+      }
+    ],
+    "3.1 Fix `DashboardScreen.tsx` — add `useWebSocket` hook call": [
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788856292309
+      },
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788858483619
+      },
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788858644314
+      }
+    ],
+    "3.2 Fix `PaywallScreen.tsx` — replace incomplete logout with `useAuth`": [
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788856292577
+      },
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788858484015
+      },
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788858645985
+      }
+    ],
+    "3.3 Verify bug condition exploration test now passes": [
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788856292851
+      },
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788858661332
+      },
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788858819582
+      }
+    ],
+    "3.4 Verify preservation tests still pass": [
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788856293115
+      },
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788858664637
+      },
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788858820203
+      }
+    ],
+    "4. Checkpoint — Ensure all tests pass": [
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788856293377
+      },
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788858828820
+      },
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788859285203
+      }
+    ],
+    "3. Fix Bug 1 and Bug 2": [
+      {
+        "executionId": "9949df84-171d-48c7-98f5-b0bb36ac6847",
+        "chatSessionId": "sess_d6b9c634-4497-481d-85dd-6f61372b0da0",
+        "timestamp": 1788858820949
+      }
+    ]
+  }
+}

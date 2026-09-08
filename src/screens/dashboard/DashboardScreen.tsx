@@ -21,6 +21,7 @@ import { SkeletonCard } from '../../components/SkeletonCard';
 import { LiveDot } from '../../components/LiveDot';
 import { AutomatedBanner } from '../../components/AutomatedBanner';
 import { AnimatedNumber } from '../../components/AnimatedNumber';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import { useTradeStore } from '../../store/tradeStore';
 import { tradeService } from '../../services/tradeService';
 import { useAccountStore } from '../../store/accountStore';
@@ -47,6 +48,7 @@ export const DashboardScreen: React.FC = () => {
 
   const { accounts } = useAccountStore();
   const { user } = useAuthStore();
+  const { isConnected: wsConnected } = useWebSocket();
   const [equityData, setEquityData] = useState<{ timestamp: string; equity: number }[]>([]);
   const [equityLoading, setEquityLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
