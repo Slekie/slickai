@@ -45,6 +45,12 @@ module.exports = function withAndroidBundleConfig(config) {
       );
     }
 
+    // ── Step 4: remove orphaned REACT_NATIVE_RELEASE_LEVEL buildConfigField ─
+    gradle = gradle.replace(
+      /\s*buildConfigField\s+"String",\s+"REACT_NATIVE_RELEASE_LEVEL",[^\n]+\n/,
+      '\n'
+    );
+
     mod.modResults.contents = gradle;
     return mod;
   });

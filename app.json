@@ -37,7 +37,8 @@
       "expo-secure-store",
       "./plugins/withAndroidGradleConfig",
       "./plugins/withSecureStoreXml",
-      "./plugins/withAndroidBundleConfig"
+      "./plugins/withAndroidBundleConfig",
+      "./plugins/withMainApplicationFix"
     ],
     "extra": {
       "eas": {
