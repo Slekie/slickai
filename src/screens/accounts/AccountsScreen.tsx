@@ -92,9 +92,18 @@ const AccountCard: React.FC<AccountCardProps> = ({ item, index, onDelete }) => {
         <View style={styles.accountContent}>
           <View style={styles.accountHeader}>
             <View>
-              <Text style={styles.brokerName}>{(item.broker ?? 'UNKNOWN').toUpperCase()}</Text>
+              <Text style={styles.brokerName}>
+                {item.brokerDisplayName ?? (item.broker ?? 'UNKNOWN').toUpperCase()}
+              </Text>
+              {item.loginId ? (
+                <Text style={styles.loginIdText}>ID: {item.loginId}</Text>
+              ) : null}
               <Text style={styles.balanceText}>
-                {item.balance} {item.currency}
+                {parseFloat(item.balance).toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{' '}
+                {item.currency}
               </Text>
             </View>
             <View style={styles.headerRight}>
@@ -648,6 +657,11 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontSize: FONTS.sizes.sm,
     marginTop: 2,
+  },
+  loginIdText: {
+    color: COLORS.textMuted,
+    fontSize: FONTS.sizes.xs,
+    marginTop: 1,
   },
   headerRight: {
     alignItems: 'flex-end',

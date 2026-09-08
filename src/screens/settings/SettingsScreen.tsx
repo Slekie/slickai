@@ -287,7 +287,10 @@ export const SettingsScreen: React.FC = () => {
           <View key={account.accountId} style={styles.accountCard}>
             <View style={styles.accountTop}>
               <View>
-                <Text style={styles.brokerName}>{account.broker.toUpperCase()}</Text>
+                <Text style={styles.brokerName}>{account.brokerDisplayName ?? account.broker.toUpperCase()}</Text>
+                {account.loginId ? (
+                  <Text style={styles.balanceText}>ID: {account.loginId}</Text>
+                ) : null}
                 <Text style={styles.balanceText}>{account.balance} {account.currency}</Text>
               </View>
               <View style={[styles.modeBadge, isAutomated ? styles.modeBadgeAuto : styles.modeBadgeSignal]}>

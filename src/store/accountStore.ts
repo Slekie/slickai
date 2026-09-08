@@ -7,6 +7,10 @@ export interface ConnectedAccount {
   accountId: string;
   userId: string;
   broker: string;
+  /** Human-readable broker label from the backend, e.g. "Deriv Demo MT5" */
+  brokerDisplayName: string | null;
+  /** Broker login number for display, e.g. "62668499" */
+  loginId: string | null;
   balance: string;
   currency: string;
   status: AccountStatus;
