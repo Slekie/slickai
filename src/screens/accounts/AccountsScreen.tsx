@@ -1,4 +1,5 @@
 ﻿import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -59,9 +60,11 @@ interface AccountCardProps {
   item: ConnectedAccount;
   index: number;
   onDelete: (account: ConnectedAccount) => void;
+  onRefresh: (account: ConnectedAccount) => void;
+  isRefreshing: boolean;
 }
 
-const AccountCard: React.FC<AccountCardProps> = ({ item, index, onDelete }) => {
+const AccountCard: React.FC<AccountCardProps> = ({ item, index, onDelete, onRefresh, isRefreshing }) => {
   const fadeAnim = useSharedValue(0);
   const slideAnim = useSharedValue(20);
 
@@ -98,13 +101,27 @@ const AccountCard: React.FC<AccountCardProps> = ({ item, index, onDelete }) => {
               {item.loginId ? (
                 <Text style={styles.loginIdText}>ID: {item.loginId}</Text>
               ) : null}
-              <Text style={styles.balanceText}>
-                {parseFloat(item.balance).toLocaleString('en-US', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}{' '}
-                {item.currency}
-              </Text>
+              <View style={styles.balanceRow}>
+                <Text style={styles.balanceText}>
+                  {parseFloat(item.balance ?? '0').toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })} {item.currency}
+                </Text>
+                <Pressable
+                  onPress={() => onRefresh(item)}
+                  disabled={isRefreshing}
+                  style={styles.refreshIconBtn}
+                  accessibilityLabel="Refresh balance"
+                  accessibilityRole="button"
+                  accessibilityHint="Fetches the latest balance from the broker"
+                >
+                  {isRefreshing
+                    ? <ActivityIndicator size="small" color={COLORS.primary} style={{ width: 16, height: 16 }} />
+                    : <Ionicons name="refresh-outline" size={14} color={COLORS.textMuted} />
+                  }
+                </Pressable>
+              </View>
             </View>
             <View style={styles.headerRight}>
               <View style={[styles.statusBadge, { borderColor: color, backgroundColor: `${color}22` }]}>
@@ -156,6 +173,7 @@ export const AccountsScreen: React.FC = () => {
   const [mt5Login, setMt5Login] = useState('');
   const [mt5Password, setMt5Password] = useState('');
   const [mt5Server, setMt5Server] = useState('');
+  const [derivPat, setDerivPat] = useState('');
 
   // Step 2 — Deriv account picker
   const [derivAccounts, setDerivAccounts] = useState<DerivAccount[]>([]);
@@ -165,6 +183,7 @@ export const AccountsScreen: React.FC = () => {
   const [connectError, setConnectError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isFetchingAccounts, setIsFetchingAccounts] = useState(false);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
 
   const resetModal = () => {
     setStep('credentials');
@@ -172,6 +191,7 @@ export const AccountsScreen: React.FC = () => {
     setMt5Login('');
     setMt5Password('');
     setMt5Server('');
+    setDerivPat('');
     setDerivAccounts([]);
     setSelectedDerivAccountId(null);
     setConnectError(null);
@@ -259,6 +279,7 @@ export const AccountsScreen: React.FC = () => {
             login:    mt5Login.trim(),
             password: mt5Password.trim(),
             server:   mt5Server.trim(),
+            ...(derivPat.trim() ? { derivPat: derivPat.trim() } : {}),
           },
         };
       }
@@ -277,6 +298,22 @@ export const AccountsScreen: React.FC = () => {
       setIsConnecting(false);
     }
   }, [selectedBroker, pat, selectedDerivAccountId, mt5Login, mt5Password, mt5Server, addAccount]);
+
+  const handleRefreshBalance = useCallback(async (account: ConnectedAccount) => {
+    setRefreshingId(account.accountId);
+    try {
+      const updated = await accountService.refreshBalance(account.accountId);
+      useAccountStore.getState().updateAccount(account.accountId, {
+        balance:  updated.balance,
+        currency: updated.currency,
+        lastSync: updated.lastSync,
+      });
+    } catch {
+      // Non-fatal — silently ignore, user can try again
+    } finally {
+      setRefreshingId(null);
+    }
+  }, []);
 
   const handleDelete = useCallback(
     (account: ConnectedAccount) => {
@@ -339,7 +376,13 @@ export const AccountsScreen: React.FC = () => {
         data={accounts}
         keyExtractor={(item) => item.accountId}
         renderItem={({ item, index }) => (
-          <AccountCard item={item} index={index} onDelete={handleDelete} />
+          <AccountCard
+            item={item}
+            index={index}
+            onDelete={handleDelete}
+            onRefresh={handleRefreshBalance}
+            isRefreshing={refreshingId === item.accountId}
+          />
         )}
         contentContainerStyle={styles.listContent}
         onRefresh={loadAccounts}
@@ -453,6 +496,20 @@ export const AccountsScreen: React.FC = () => {
                       autoCapitalize="none"
                       accessibilityLabel="MT5 server address"
                     />
+                    <Text style={styles.inputLabel}>Deriv PAT (optional)</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={derivPat}
+                      onChangeText={setDerivPat}
+                      placeholder="Deriv API token for live balance sync"
+                      placeholderTextColor={COLORS.textMuted}
+                      autoCapitalize="none"
+                      secureTextEntry
+                      accessibilityLabel="Deriv PAT for MT5 balance sync"
+                    />
+                    <Text style={styles.hintText}>
+                      Provide your Deriv PAT (from app.deriv.com) to enable live balance fetching for this MT5 account.
+                    </Text>
                   </>
                 )}
 
@@ -657,6 +714,15 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontSize: FONTS.sizes.sm,
     marginTop: 2,
+  },
+  balanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+    gap: 6,
+  },
+  refreshIconBtn: {
+    padding: 2,
   },
   loginIdText: {
     color: COLORS.textMuted,

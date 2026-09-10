@@ -75,6 +75,16 @@ export const accountService = {
     await apiClient.delete(ENDPOINTS.accounts.disconnect(accountId));
   },
 
+  /** Trigger a live balance refresh for an account. Returns the updated account. */
+  refreshBalance: async (accountId: string): Promise<ConnectedAccount> => {
+    const response = await apiClient.post<{ success: boolean; account: ConnectedAccount }>(
+      `${ENDPOINTS.accounts.list}/${accountId}/refresh-balance`,
+      {},
+      { timeout: 20_000 },
+    );
+    return response.data.account;
+  },
+
   /**
    * Update the subscription mode for an account.
    * Passes confirm:true automatically when switching to automated_trading (Req 12.4).
