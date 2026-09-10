@@ -172,7 +172,7 @@ export const AccountsScreen: React.FC = () => {
   const [mt5Login, setMt5Login] = useState('');
   const [mt5Password, setMt5Password] = useState('');
   const [mt5Server, setMt5Server] = useState('');
-  const [derivPat, setDerivPat] = useState('');
+
 
   // Step 2 — Deriv account picker
   const [derivAccounts, setDerivAccounts] = useState<DerivAccount[]>([]);
@@ -190,7 +190,7 @@ export const AccountsScreen: React.FC = () => {
     setMt5Login('');
     setMt5Password('');
     setMt5Server('');
-    setDerivPat('');
+
     setDerivAccounts([]);
     setSelectedDerivAccountId(null);
     setConnectError(null);
@@ -278,7 +278,6 @@ export const AccountsScreen: React.FC = () => {
             login:    mt5Login.trim(),
             password: mt5Password.trim(),
             server:   mt5Server.trim(),
-            ...(derivPat.trim() ? { derivPat: derivPat.trim() } : {}),
           },
         };
       }
@@ -296,7 +295,7 @@ export const AccountsScreen: React.FC = () => {
     } finally {
       setIsConnecting(false);
     }
-  }, [selectedBroker, pat, selectedDerivAccountId, mt5Login, mt5Password, mt5Server, addAccount]);
+  }, [selectedBroker, pat, selectedDerivAccountId, mt5Login, mt5Password, mt5Server, addAccount, derivPat]);
 
   const handleRefreshBalance = useCallback(async (account: ConnectedAccount) => {
     setRefreshingId(account.accountId);
@@ -495,20 +494,6 @@ export const AccountsScreen: React.FC = () => {
                       autoCapitalize="none"
                       accessibilityLabel="MT5 server address"
                     />
-                    <Text style={styles.inputLabel}>Deriv PAT (optional)</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={derivPat}
-                      onChangeText={setDerivPat}
-                      placeholder="Deriv API token for live balance sync"
-                      placeholderTextColor={COLORS.textMuted}
-                      autoCapitalize="none"
-                      secureTextEntry
-                      accessibilityLabel="Deriv PAT for MT5 balance sync"
-                    />
-                    <Text style={styles.hintText}>
-                      Provide your Deriv PAT (from app.deriv.com) to enable live balance fetching for this MT5 account.
-                    </Text>
                   </>
                 )}
 

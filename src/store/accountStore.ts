@@ -11,6 +11,8 @@ export interface ConnectedAccount {
   brokerDisplayName: string | null;
   /** Broker login number for display, e.g. "62668499" */
   loginId: string | null;
+  /** MetaApi cloud account UUID — null for non-MT5 or pre-MetaApi accounts */
+  metaApiAccountId: string | null;
   balance: string;
   currency: string;
   status: AccountStatus;
