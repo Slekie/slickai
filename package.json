@@ -55,5 +55,8 @@
         "jest-expo": "~54.0.18",
         "typescript": "~5.9.2"
     },
-    "private": true
+    "overrides": {
+    "@types/react": "~19.1.0"
+  },
+  "private": true
 }

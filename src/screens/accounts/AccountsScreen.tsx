@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -167,14 +167,14 @@ export const AccountsScreen: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedBroker, setSelectedBroker] = useState<SupportedBroker>('deriv');
 
-  // Step 1 — credentials
+  // Step 1 � credentials
   const [pat, setPat] = useState('');
   const [mt5Login, setMt5Login] = useState('');
   const [mt5Password, setMt5Password] = useState('');
   const [mt5Server, setMt5Server] = useState('');
 
 
-  // Step 2 — Deriv account picker
+  // Step 2 � Deriv account picker
   const [derivAccounts, setDerivAccounts] = useState<DerivAccount[]>([]);
   const [selectedDerivAccountId, setSelectedDerivAccountId] = useState<string | null>(null);
   const [step, setStep] = useState<'credentials' | 'pick-account'>('credentials');
@@ -215,7 +215,7 @@ export const AccountsScreen: React.FC = () => {
     void loadAccounts();
   }, [loadAccounts]);
 
-  // Step 1 → Step 2: fetch Deriv accounts for the entered PAT
+  // Step 1 ? Step 2: fetch Deriv accounts for the entered PAT
   const handleFetchDerivAccounts = useCallback(async () => {
     setConnectError(null);
     if (!pat.trim()) {
@@ -295,7 +295,7 @@ export const AccountsScreen: React.FC = () => {
     } finally {
       setIsConnecting(false);
     }
-  }, [selectedBroker, pat, selectedDerivAccountId, mt5Login, mt5Password, mt5Server, addAccount, derivPat]);
+  }, [selectedBroker, pat, selectedDerivAccountId, mt5Login, mt5Password, mt5Server, addAccount]);
 
   const handleRefreshBalance = useCallback(async (account: ConnectedAccount) => {
     setRefreshingId(account.accountId);
@@ -307,7 +307,7 @@ export const AccountsScreen: React.FC = () => {
         lastSync: updated.lastSync,
       });
     } catch {
-      // Non-fatal — silently ignore, user can try again
+      // Non-fatal � silently ignore, user can try again
     } finally {
       setRefreshingId(null);
     }
@@ -418,7 +418,7 @@ export const AccountsScreen: React.FC = () => {
               </View>
             )}
 
-            {/* ── Step 1: Credentials ── */}
+            {/* -- Step 1: Credentials -- */}
             {step === 'credentials' && (
               <>
                 <Text style={styles.inputLabel}>Select Broker</Text>
@@ -458,7 +458,7 @@ export const AccountsScreen: React.FC = () => {
                       accessibilityLabel="Deriv API token"
                     />
                     <Text style={styles.hintText}>
-                      Get your token at app.deriv.com → Account Settings → API Token.{'\n'}
+                      Get your token at app.deriv.com ? Account Settings ? API Token.{'\n'}
                       Enable Read + Trade scopes.
                     </Text>
                   </>
@@ -519,7 +519,7 @@ export const AccountsScreen: React.FC = () => {
                     ) : (
                       <LinearGradient colors={COLORS.gradientBuy} style={styles.connectGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                         <Text style={styles.connectButtonText}>
-                          {selectedBroker === 'deriv' ? 'Next →' : 'Connect'}
+                          {selectedBroker === 'deriv' ? 'Next ?' : 'Connect'}
                         </Text>
                       </LinearGradient>
                     )}
@@ -528,7 +528,7 @@ export const AccountsScreen: React.FC = () => {
               </>
             )}
 
-            {/* ── Step 2: Deriv account picker ── */}
+            {/* -- Step 2: Deriv account picker -- */}
             {step === 'pick-account' && (
               <>
                 <Text style={styles.hintText}>
@@ -567,7 +567,7 @@ export const AccountsScreen: React.FC = () => {
                     accessibilityRole="button"
                     accessibilityLabel="Back to credentials"
                   >
-                    <Text style={styles.cancelButtonText}>← Back</Text>
+                    <Text style={styles.cancelButtonText}>? Back</Text>
                   </Pressable>
                   <Pressable
                     style={[styles.connectButton, isConnecting && styles.buttonDisabled]}

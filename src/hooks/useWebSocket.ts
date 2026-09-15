@@ -13,18 +13,26 @@ export function useWebSocket() {
   const addTrade = useTradeStore((s) => s.addTrade);
   const closeTrade = useTradeStore((s) => s.closeTrade);
   const updatePosition = useTradeStore((s) => s.updatePosition);
-  const isSetup = useRef(false);
+
+  // Keep stable refs to the latest store actions so the effect never needs to
+  // re-register listeners just because a Zustand selector returned a new function
+  // reference (which can happen on every render with some selector patterns).
+  const addSignalRef = useRef(addSignal);
+  const addTradeRef = useRef(addTrade);
+  const closeTradeRef = useRef(closeTrade);
+  const updatePositionRef = useRef(updatePosition);
+  addSignalRef.current = addSignal;
+  addTradeRef.current = addTrade;
+  closeTradeRef.current = closeTrade;
+  updatePositionRef.current = updatePosition;
 
   useEffect(() => {
-    if (isSetup.current) return;
-    isSetup.current = true;
-
     const onConnectionChange = (connected: boolean) => {
       setIsConnected(connected);
     };
 
     const onSignal = (data: unknown) => {
-      addSignal(data as Signal);
+      addSignalRef.current(data as Signal);
       void notificationService.showLocalNotification({
         title: 'New Trading Signal',
         body: `${(data as Signal).direction} ${(data as Signal).asset} @ ${(data as Signal).entryPrice}`,
@@ -33,7 +41,7 @@ export function useWebSocket() {
     };
 
     const onTradeExecuted = (data: unknown) => {
-      addTrade(data as Trade);
+      addTradeRef.current(data as Trade);
       void notificationService.showLocalNotification({
         title: 'Trade Executed',
         body: `${(data as Trade).direction} ${(data as Trade).asset} opened`,
@@ -43,7 +51,7 @@ export function useWebSocket() {
 
     const onTradeClosed = (data: unknown) => {
       const trade = data as Trade & { exitPrice: string; profitLoss: string };
-      closeTrade(trade.tradeId, trade.exitPrice ?? '0', trade.profitLoss ?? '0');
+      closeTradeRef.current(trade.tradeId, trade.exitPrice ?? '0', trade.profitLoss ?? '0');
       void notificationService.showLocalNotification({
         title: 'Trade Closed',
         body: `${trade.asset} closed. P&L: ${trade.profitLoss}`,
@@ -53,7 +61,7 @@ export function useWebSocket() {
 
     const onPositionUpdate = (data: unknown) => {
       const pos = data as OpenPosition;
-      updatePosition(pos.tradeId, pos);
+      updatePositionRef.current(pos.tradeId, pos);
     };
 
     websocketService.onConnectionChange(onConnectionChange);
@@ -62,15 +70,19 @@ export function useWebSocket() {
     websocketService.on('trade_closed' as WsEventType, onTradeClosed);
     websocketService.on('position_update' as WsEventType, onPositionUpdate);
 
+    // Sync initial connection state in case it changed before this effect ran
+    setIsConnected(websocketService.isConnected);
+
     return () => {
       websocketService.offConnectionChange(onConnectionChange);
       websocketService.off('signal' as WsEventType, onSignal);
       websocketService.off('trade_executed' as WsEventType, onTradeExecuted);
       websocketService.off('trade_closed' as WsEventType, onTradeClosed);
       websocketService.off('position_update' as WsEventType, onPositionUpdate);
-      isSetup.current = false;
     };
-  }, [addSignal, addTrade, closeTrade, updatePosition]);
+  // Empty deps: listeners are registered once per mount. Stable refs keep
+  // them up-to-date without re-registering on every render.
+  }, []);
 
   return { isConnected };
 }
