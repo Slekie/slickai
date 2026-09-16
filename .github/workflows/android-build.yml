@@ -1,4 +1,4 @@
-ï»¿name: Android â€” Debug APK
+name: Android — Debug APK
 
 on:
   push:
@@ -40,9 +40,12 @@ jobs:
         run: node node_modules/expo/bin/cli prebuild --platform android --clean --no-install
         env:
           EXPO_PUBLIC_API_BASE_URL: https://saita-backend.onrender.com
-          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: ''
-          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ''
-          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ''
+          EXPO_PUBLIC_WS_URL: wss://saita-backend.onrender.com
+          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID }}
+          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
+          EXPO_PUBLIC_REVENUECAT_IOS_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_KEY }}
+          EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY }}
           EXPO_NO_INTERACTIVE: '1'
           CI: '1'
 
@@ -63,12 +66,18 @@ jobs:
       # EXPO_OVERRIDE_METRO_CONFIG forces Metro to load metro.config.js from the
       # project root, preventing it from climbing up to a parent directory.
       # debuggableVariants = [] in app/build.gradle ensures the JS bundle is
-      # always embedded â€” never loaded from a Metro dev server at runtime.
+      # always embedded — never loaded from a Metro dev server at runtime.
       - name: Build debug APK
         working-directory: android
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace --warning-mode all
         env:
           EXPO_PUBLIC_API_BASE_URL: https://saita-backend.onrender.com
+          EXPO_PUBLIC_WS_URL: wss://saita-backend.onrender.com
+          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID }}
+          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
+          EXPO_PUBLIC_REVENUECAT_IOS_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_KEY }}
+          EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY }}
           NODE_ENV: production
           EXPO_OVERRIDE_METRO_CONFIG: ${{ github.workspace }}/metro.config.js
           NODE_PATH: ${{ github.workspace }}/node_modules

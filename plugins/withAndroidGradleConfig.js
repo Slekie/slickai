@@ -8,6 +8,10 @@
  *    - kotlin.daemon.jvm.options with --add-opens flags
  *    - sufficient heap for the Kotlin daemon
  *    - org.gradle.warning.mode=summary (keeps CI output readable)
+ * 3. Adds R8 fix for react-native-purchases-ui R8/AGP conflict.
+ *    RevenueCat docs: https://www.revenuecat.com/docs/getting-started/installation/reactnative
+ *    Fixes: "Could not resolve all files for configuration devDebugRuntimeClasspath"
+ *    during :app:mergeExtDexDevDebug / compileDebugKotlin tasks.
  */
 const { withProjectBuildGradle, withGradleProperties } = require('@expo/config-plugins');
 
@@ -28,6 +32,31 @@ module.exports = function withAndroidGradleConfig(config) {
       gradle = gradle.replace(
         'classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")',
         `classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${KOTLIN_VERSION}")`
+      );
+    }
+
+    // Step 3 -- R8 fix for react-native-purchases-ui (RevenueCat)
+    // Injects the R8 release repo and a pinned R8 classpath into buildscript {}
+    // so AGP uses a version that resolves the devDebugRuntimeClasspath conflict.
+    const r8Repo = `        maven {
+            url = uri("https://storage.googleapis.com/r8-releases/raw")
+        }`;
+    const r8Classpath = `        classpath("com.android.tools:r8:8.1.44")`;
+
+    // Only add if not already present
+    if (!gradle.includes('storage.googleapis.com/r8-releases/raw')) {
+      // Insert the R8 repo into the buildscript repositories {} block
+      gradle = gradle.replace(
+        /(buildscript\s*\{[^}]*repositories\s*\{)/,
+        (match) => match + '\n' + r8Repo
+      );
+    }
+
+    if (!gradle.includes('com.android.tools:r8')) {
+      // Insert the R8 classpath into the buildscript dependencies {} block
+      gradle = gradle.replace(
+        /(buildscript\s*\{(?:[^}]|\{[^}]*\})*?dependencies\s*\{)/,
+        (match) => match + '\n' + r8Classpath
       );
     }
 
@@ -53,6 +82,18 @@ module.exports = function withAndroidGradleConfig(config) {
       // Keep incremental compilation off on CI (clean builds only)
       'kotlin.incremental': 'false',
     };
+
+    // On Windows local builds, point Gradle at the known Java 17 install so it
+    // ignores whatever JAVA_HOME happens to be set to in the environment.
+    // On CI (Linux) JAVA_HOME is set correctly by the workflow, so we skip this.
+    if (process.platform === 'win32') {
+      const javaHome = 'C:\\Program Files\\Microsoft\\jdk-17.0.20.101-hotspot';
+      const fs = require('fs');
+      if (fs.existsSync(javaHome)) {
+        // In .properties format backslashes must be escaped as \\
+        props.push({ type: 'property', key: 'org.gradle.java.home', value: javaHome.replace(/\\/g, '\\\\') });
+      }
+    }
 
     // Remove any existing entries for the keys we are setting
     let props = mod.modResults.filter(
