@@ -2,9 +2,9 @@ module.exports = function (api) {
   api.cache(true);
   return {
     presets: ['babel-preset-expo'],
-    plugins: [
-      // react-native-reanimated plugin MUST be listed last
-      'react-native-reanimated/plugin',
-    ],
+    // No Reanimated/Worklets Babel plugin needed for Expo projects.
+    // Expo SDK handles the worklets transform automatically via babel-preset-expo.
+    // Adding it manually causes crashes in Expo Go.
+    plugins: [],
   };
 };
