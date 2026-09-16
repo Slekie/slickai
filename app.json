@@ -38,7 +38,8 @@
       "./plugins/withAndroidGradleConfig",
       "./plugins/withSecureStoreXml",
       "./plugins/withAndroidBundleConfig",
-      "./plugins/withMainApplicationFix"
+      "./plugins/withMainApplicationFix",
+      "./plugins/withAndroidLaunchMode"
     ],
     "extra": {
       "eas": {

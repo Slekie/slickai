@@ -201,7 +201,7 @@ async function seedAllStoresWithUserAData(): Promise<void> {
     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
   });
   useAccountStore.setState({
-    accounts: [{ accountId: 'acc-a1', userId: 'user-a', broker: 'OANDA', balance: '10000',
+    accounts: [{ accountId: 'acc-a1', userId: 'user-a', broker: 'OANDA', brokerDisplayName: null, loginId: null, metaApiAccountId: null, balance: '10000',
       currency: 'USD', status: 'active', subscriptionMode: 'signal_delivery',
       connectedAt: new Date().toISOString(), lastSync: null }],
   });
@@ -677,7 +677,7 @@ describe('Preservation 3.3 — useAuth().logout parity baseline (SettingsScreen 
             trades: [], performanceSummary: null,
           });
           useAccountStore.setState({
-            accounts: [{ accountId: 'a1', userId: 'u1', broker: 'IC', balance: '5000',
+            accounts: [{ accountId: 'a1', userId: 'u1', broker: 'IC', brokerDisplayName: null, loginId: null, metaApiAccountId: null, balance: '5000',
               currency: 'USD', status: 'active', subscriptionMode: 'signal_delivery',
               connectedAt: new Date().toISOString(), lastSync: null }],
           });
