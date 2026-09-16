@@ -8,11 +8,11 @@ on:
       profile:
         description: 'Build profile'
         required: true
-        default: 'development'
+        default: 'preview'
         type: choice
         options:
-          - development
           - preview
+          - development
           - production
       platform:
         description: 'Platform'
@@ -26,7 +26,7 @@ on:
 
 jobs:
   build:
-    name: EAS Build (${{ github.event.inputs.profile || 'development' }} / ${{ github.event.inputs.platform || 'android' }})
+    name: EAS Build (${{ github.event.inputs.profile || 'preview' }} / ${{ github.event.inputs.platform || 'android' }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -54,14 +54,6 @@ jobs:
         run: |
           eas build \
             --platform ${{ github.event.inputs.platform || 'android' }} \
-            --profile ${{ github.event.inputs.profile || 'development' }} \
+            --profile ${{ github.event.inputs.profile || 'preview' }} \
             --non-interactive \
             --no-wait
-        env:
-          EXPO_PUBLIC_API_BASE_URL: https://saita-backend.onrender.com
-          EXPO_PUBLIC_WS_URL: wss://saita-backend.onrender.com
-          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID }}
-          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
-          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
-          EXPO_PUBLIC_REVENUECAT_IOS_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_KEY }}
-          EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY }}
