@@ -63,8 +63,7 @@
     "typescript": "~5.9.2"
   },
   "overrides": {
-    "@types/react": "~19.1.0",
-    "react-native-webview": "14.0.1"
+    "@types/react": "~19.1.0"
   },
   "private": true
 }
