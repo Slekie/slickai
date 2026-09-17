@@ -59,11 +59,10 @@ export class ErrorBoundary extends Component<Props, State> {
       <View style={styles.container}>
         <Text style={styles.icon}>⚠️</Text>
         <Text style={styles.title}>Something went wrong</Text>
-        {__DEV__ && (
-          <Text style={styles.detail} numberOfLines={4}>
-            {this.state.errorMessage}
-          </Text>
-        )}
+        {/* Show error on device to diagnose production crashes */}
+        <Text style={styles.detail} numberOfLines={6}>
+          {this.state.errorMessage}
+        </Text>
         <Text style={styles.body}>
           An unexpected error occurred. Please restart the app to continue.
         </Text>

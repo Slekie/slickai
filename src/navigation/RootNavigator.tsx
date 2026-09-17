@@ -153,13 +153,24 @@ export const RootNavigator: React.FC = () => {
 
   useEffect(() => {
     const init = async () => {
-      await Promise.all([
-        loadStoredAuth(),
-        notificationService.initialize(),
-      ]);
-      await notificationService.requestPermissions();
-      const done = await hasCompletedOnboarding();
-      setOnboardingDone(done);
+      try {
+        await loadStoredAuth();
+      } catch (e) {
+        if (__DEV__) console.warn("[RootNavigator] loadStoredAuth failed:", e);
+      }
+      try {
+        await notificationService.initialize();
+        await notificationService.requestPermissions();
+      } catch (e) {
+        if (__DEV__) console.warn("[RootNavigator] notificationService init failed:", e);
+      }
+      try {
+        const done = await hasCompletedOnboarding();
+        setOnboardingDone(done);
+      } catch (e) {
+        if (__DEV__) console.warn("[RootNavigator] hasCompletedOnboarding failed:", e);
+        setOnboardingDone(true);
+      }
       setTimeout(() => setShowSplash(false), 1800);
     };
     void init();

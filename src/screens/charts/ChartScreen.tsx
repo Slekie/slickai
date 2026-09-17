@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+﻿import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -34,13 +34,15 @@ const SYMBOLS: ChartSymbol[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Build a data: URI for the TradingView widget.
-// Using data: URI instead of source={{ html }} avoids the
-// Image.resolveAssetSource crash in react-native-webview on RN 0.76+.
+// Build the TradingView widget HTML.
+//
+// We use source={{ html }} rather than a data: URI because:
+//   - btoa() is NOT available in Hermes (React Native JS engine)
+//   - source={{ html }} is the correct WebView API for inline HTML
 // ---------------------------------------------------------------------------
 
-function buildChartUri(symbol: string): string {
-  const html = `<!DOCTYPE html>
+function buildChartHtml(symbol: string): string {
+  return `<!DOCTYPE html>
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
@@ -76,10 +78,6 @@ html,body{width:100%;height:100%;background:#080B14;overflow:hidden;}
 </div>
 </body>
 </html>`;
-
-  // Encode as base64 data URI — avoids resolveAssetSource code path entirely
-  const encoded = btoa(unescape(encodeURIComponent(html)));
-  return `data:text/html;base64,${encoded}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -92,7 +90,7 @@ export const ChartScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const webViewRef = useRef<WebView>(null);
 
-  const uri = buildChartUri(selectedSymbol.symbol);
+  const chartHtml = buildChartHtml(selectedSymbol.symbol);
 
   return (
     <View style={styles.container}>
@@ -147,7 +145,7 @@ export const ChartScreen: React.FC = () => {
         <WebView
           ref={webViewRef}
           style={styles.webView}
-          source={{ uri }}
+          source={{ html: chartHtml }}
           originWhitelist={['*']}
           javaScriptEnabled
           domStorageEnabled
