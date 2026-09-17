@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "updates": {
       "enabled": true
     },
@@ -38,7 +38,8 @@
       "expo-system-ui",
       "./plugins/withSecureStoreXml",
       "./plugins/withMainApplicationFix",
-      "./plugins/withAndroidLaunchMode"
+      "./plugins/withAndroidLaunchMode",
+      "./plugins/withArmOnly"
     ],
     "extra": {
       "eas": {

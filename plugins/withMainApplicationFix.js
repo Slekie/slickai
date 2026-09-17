@@ -1,32 +1,29 @@
 ﻿/**
  * withMainApplicationFix.js
  *
- * Expo config plugin that rewrites MainApplication.kt after expo prebuild
- * to produce a correct, working setup for RN 0.81.x with Old Architecture.
+ * Fixes MainApplication.kt after expo prebuild for RN 0.81.x + New Architecture.
  *
- * Background:
- *   newArchEnabled is set to false in app.json because EAS Build's preview
- *   profile does not correctly package libreact_featureflagsjni.so and other
- *   New Architecture .so files, causing an immediate crash on all Android
- *   devices:
- *     com.facebook.soloader.SoLoaderDSONotFoundError:
- *       couldn't find DSO to load: libreact_featureflagsjni.so
+ * Problems fixed:
  *
- *   With Old Architecture, the app works correctly. New Architecture can be
- *   re-enabled when upgrading to Expo SDK 55+, which mandates New Arch and
- *   handles native library packaging correctly.
+ * 1. BUILD ERROR: expo prebuild generates code that imports
+ *    ReactNativeApplicationEntryPoint / calls loadReactNative(this).
+ *    Neither exist in RN 0.81.5. Causes compileDebugKotlin FAILED.
  *
- * What this plugin fixes:
- *   expo prebuild for RN 0.81.x still generates code that imports
- *   ReactNativeApplicationEntryPoint / calls loadReactNative(this), neither
- *   of which exist in the RN 0.81.5 npm package, causing a Kotlin compile error.
+ * 2. RUNTIME CRASH: DefaultNewArchitectureEntryPoint.load() calls
+ *    ReactNativeFeatureFlags.override() which loads libreact_featureflagsjni.so
+ *    via SoLoader. If SoLoader.init() has not been called yet, the app crashes:
+ *      IllegalStateException: SoLoader.init() not yet called
  *
- *   This plugin replaces the entire onCreate() body with the correct
- *   Old Architecture sequence:
- *     SoLoader.init(this, false)
- *     ApplicationLifecycleDispatcher.onApplicationCreate(this)
+ * Fix: rewrite onCreate() to the correct New Architecture sequence:
+ *   SoLoader.init(this, false)                           <- must be first
+ *   DefaultNewArchitectureEntryPoint.releaseLevel = ...  <- optional, sets feature flags
+ *   DefaultNewArchitectureEntryPoint.load()              <- loads New Arch native libs
+ *   ApplicationLifecycleDispatcher.onApplicationCreate(this)
  *
- *   No DefaultNewArchitectureEntryPoint calls are needed with Old Arch.
+ * Note: newArchEnabled MUST remain true in app.json.
+ *   react-native-worklets (required by react-native-reanimated 4.x) throws a
+ *   hard build error if newArchEnabled=false:
+ *     [Worklets] Worklets require new architecture to be enabled.
  */
 const { withDangerousMod } = require('@expo/config-plugins');
 const fs = require('fs');
@@ -48,47 +45,59 @@ module.exports = function withMainApplicationFix(config) {
 
       let src = fs.readFileSync(mainAppPath, 'utf8');
 
-      // ── 1. Remove bad imports that don't exist in RN 0.81.5 ───────────
+      // ── 1. Remove imports that don't exist in RN 0.81.5 ──────────────
       const badImports = [
         /^import com\.facebook\.react\.ReactNativeApplicationEntryPoint\r?\n/m,
         /^import com\.facebook\.react\.ReactNativeApplicationEntryPoint\.[^\r\n]+\r?\n/m,
-        // Remove New Arch imports — not needed with Old Architecture
-        /^import com\.facebook\.react\.common\.ReleaseLevel\r?\n/m,
-        /^import com\.facebook\.react\.defaults\.DefaultNewArchitectureEntryPoint\r?\n/m,
       ];
       for (const pattern of badImports) {
         src = src.replace(pattern, '');
       }
 
-      // ── 2. Ensure SoLoader import is present ──────────────────────────
-      if (!src.includes('import com.facebook.soloader.SoLoader')) {
-        src = src.replace(
-          /(import expo\.modules\.ReactNativeHostWrapper\n)/,
-          '$1import com.facebook.soloader.SoLoader\n'
-        );
-        if (!src.includes('import com.facebook.soloader.SoLoader')) {
+      // ── 2. Ensure required imports are present ────────────────────────
+      const requiredImports = {
+        'import com.facebook.soloader.SoLoader':
+          /import com\.facebook\.soloader\.SoLoader/,
+        'import com.facebook.react.common.ReleaseLevel':
+          /import com\.facebook\.react\.common\.ReleaseLevel/,
+        'import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint':
+          /import com\.facebook\.react\.defaults\.DefaultNewArchitectureEntryPoint/,
+      };
+
+      for (const [importLine, checkPattern] of Object.entries(requiredImports)) {
+        if (!checkPattern.test(src)) {
+          // Insert before "class MainApplication"
           src = src.replace(
             /^class MainApplication/m,
-            'import com.facebook.soloader.SoLoader\n\nclass MainApplication'
+            `${importLine}\n\nclass MainApplication`
           );
         }
       }
 
-      // ── 3. Rewrite the entire onCreate() body ─────────────────────────
-      // Old Architecture only needs SoLoader.init + ApplicationLifecycleDispatcher.
-      // No DefaultNewArchitectureEntryPoint calls required.
+      // ── 3. Replace the entire onCreate() body ────────────────────────
+      // Correct New Architecture sequence for RN 0.81.x:
+      //   1. SoLoader.init(this, false)  — must come before any .so loading
+      //   2. DefaultNewArchitectureEntryPoint.releaseLevel = ReleaseLevel.STABLE
+      //   3. DefaultNewArchitectureEntryPoint.load()  — loads New Arch .so files
+      //   4. ApplicationLifecycleDispatcher.onApplicationCreate(this)
       const correctOnCreate = `  override fun onCreate() {
     super.onCreate()
+    // SoLoader MUST be initialised before DefaultNewArchitectureEntryPoint.load().
+    // load() triggers ReactNativeFeatureFlags to load libreact_featureflagsjni.so
+    // via SoLoader — if SoLoader is not yet initialised this crashes with:
+    //   java.lang.IllegalStateException: SoLoader.init() not yet called
     SoLoader.init(this, false)
+    DefaultNewArchitectureEntryPoint.releaseLevel = ReleaseLevel.STABLE
+    DefaultNewArchitectureEntryPoint.load()
     ApplicationLifecycleDispatcher.onApplicationCreate(this)
   }`;
 
       const onCreatePattern = /  override fun onCreate\(\) \{[\s\S]*?\n  \}/;
       if (onCreatePattern.test(src)) {
         src = src.replace(onCreatePattern, correctOnCreate);
-        console.log('[withMainApplicationFix] Rewrote onCreate() for Old Architecture (SoLoader.init only)');
+        console.log('[withMainApplicationFix] Rewrote onCreate() with SoLoader.init + New Arch sequence');
       } else {
-        console.warn('[withMainApplicationFix] Could not find onCreate() — manual inspection needed');
+        console.warn('[withMainApplicationFix] Could not match onCreate() — manual check needed');
       }
 
       fs.writeFileSync(mainAppPath, src, 'utf8');
