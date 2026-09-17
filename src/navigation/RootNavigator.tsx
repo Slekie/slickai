@@ -109,17 +109,15 @@ const AppContent: React.FC = () => {
     void subscriptionService.getCustomerInfo().then((info) => {
       setSubscription(info);
 
-      // Dev-only paywall bypass: if we are in __DEV__ and RevenueCat returned
-      // an empty CustomerInfo (native SDK unavailable in Expo Go), skip the
-      // paywall so the full app UI is reachable during development.
+      // Dev-only paywall bypass: skip paywall in __DEV__ when RevenueCat
+      // SDK is unavailable (Expo Go, missing API key, or no native module).
+      // Detection: SDK stub returns CustomerInfo with empty firstSeen date.
       if (__DEV__) {
-        const hasAnyPurchase = info.allPurchasedProductIdentifiers.length > 0;
-        const isFirstSeen = new Date(info.firstSeen).getTime() === 0 ||
-          info.originalAppUserId === '';
-        const sdkUnavailable = !hasAnyPurchase && isFirstSeen;
-        if (sdkUnavailable) {
+        const noEntitlements = Object.keys(info.entitlements.active).length === 0;
+        const noSdk = noEntitlements && info.allPurchasedProductIdentifiers.length === 0;
+        if (noSdk) {
           setDevBypassPaywall(true);
-          if (__DEV__) console.log('[RootNavigator] DEV mode: paywall bypassed (Expo Go / no native SDK)');
+          console.log('[RootNavigator] DEV mode: paywall bypassed (no RevenueCat SDK/key)');
         }
       }
     }).catch(() => {
