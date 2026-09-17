@@ -38,9 +38,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          # No npm cache here — package-lock.json is regenerated on the EAS worker
-          # by the eas-build-pre-install hook. Caching with a missing lock file
-          # causes: "Some specified paths were not resolved, unable to cache dependencies"
+
+      - name: Install dependencies
+        # Required so EAS CLI can resolve config plugins (expo-secure-store etc.)
+        # before submitting the build to EAS servers.
+        # No package-lock.json in repo (regenerated on EAS worker via pre-install hook),
+        # so we use npm install rather than npm ci.
+        run: npm install --legacy-peer-deps
+        working-directory: .
 
       - name: Setup EAS
         uses: expo/expo-github-action@v8
