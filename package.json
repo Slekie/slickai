@@ -12,7 +12,8 @@
     "start:offline": "expo start --offline",
     "start:tunnel": "expo start --tunnel",
     "android:device": "expo run:android --device",
-    "ios:device": "expo run:ios --device"
+    "ios:device": "expo run:ios --device",
+    "eas-build-pre-install": "npm config set legacy-peer-deps true && npm install --legacy-peer-deps"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
